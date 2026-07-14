@@ -319,3 +319,21 @@ def test_default_profile_payload_end_to_end(monkeypatch, tmp_path):
         assert k not in payload, k
     assert payload["opp"]["hand"] is None
     assert payload["opp"]["life"] is None
+
+
+def test_feature_live_opp_seen_default_on():
+    assert feature("live_opp_seen") is True
+
+
+def test_gating_opp_seen(monkeypatch):
+    """opp_seen (fiable) traverse par défaut ; retiré sur opt-out explicite."""
+    monkeypatch.delenv("OPTCG_PROFILE", raising=False)
+    eng = _make_engine()
+    p = _sample_payload()
+    p["opp_seen"] = [{"card_id": "OP09-002", "name": "Uta", "count": 2}]
+    out = eng._apply_feature_gating(dict(p), exact=False)
+    assert out["opp_seen"][0]["count"] == 2
+
+    monkeypatch.setenv("OPTCG_FEATURE_LIVE_OPP_SEEN", "0")
+    out2 = eng._apply_feature_gating(dict(p), exact=False)
+    assert "opp_seen" not in out2

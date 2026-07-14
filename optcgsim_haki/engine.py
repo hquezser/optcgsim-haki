@@ -889,13 +889,15 @@ class LiveEngine:
         if exact:
             for k in ("live_opp_hand", "live_opp_life", "live_lethal",
                       "live_menaces", "live_trigger_risk", "live_archetype",
-                      "live_draw_odds", "live_defense"):
+                      "live_draw_odds", "live_defense", "live_opp_seen"):
                 feats[k] = True
         payload["features"] = feats
         # Retirer les champs approximatifs dont le flag est OFF. La défense (fiable, construite
         # par _build_defense_payload dans les deux chemins) n'est retirée que sur opt-out.
         if not feats.get("live_defense"):
             payload.pop("defense", None)
+        if not feats.get("live_opp_seen"):
+            payload.pop("opp_seen", None)
         if not feats["live_lethal"]:
             payload.pop("lethal", None)
         if not feats["live_menaces"]:
@@ -1313,6 +1315,15 @@ class LiveEngine:
             if defense:
                 self._merge_defense_sim(defense, payload.get("lethal"))
                 payload["defense"] = defense
+
+        # Exemplaires adverses vus (« 2/4 ») : comptage exact d'événements publics (cartes
+        # jouées depuis la main adverse, suivi RZ1). Fiable — aucune inférence.
+        played = self.state.opp_played_counts()
+        if played:
+            payload["opp_seen"] = [
+                {"card_id": cid, "name": self.archetype._name(cid), "count": n}
+                for cid, n in sorted(played.items(), key=lambda kv: (-kv[1], kv[0]))
+            ]
 
         # A — Score de la main de départ (recalcul uniquement si la main change).
         # Modèle v2 : seuils relatifs (vs moyenne du deck) + Curve Penalty + Dead-in-Hand.

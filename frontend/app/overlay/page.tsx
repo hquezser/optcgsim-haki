@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchState } from "@/lib/api";
 import type { LiveState } from "@/lib/types";
 import { DefensePanel } from "@/components/DefensePanel";
+import { OppSeenPanel } from "@/components/OppSeenPanel";
 import { LethalPanel } from "@/components/LethalPanel";
 import { MenacesPanel } from "@/components/MenacesPanel";
 import { DrawOddsPanel } from "@/components/DrawOddsPanel";
@@ -126,6 +127,13 @@ export default function OverlayPage() {
         {data?.defense && (
           <div className={CARD}>
             <DefensePanel defense={data.defense} opp={data.opp} />
+          </div>
+        )}
+
+        {/* Exemplaires adverses vus : comptage public exact, sous la défense. */}
+        {data?.opp_seen && data.opp_seen.length > 0 && (
+          <div className={CARD}>
+            <OppSeenPanel list={data.opp_seen} />
           </div>
         )}
 

@@ -144,6 +144,13 @@ export interface Lethal {
   trigger_risk_pct: number | null;
 }
 
+/** Exemplaire adverse vu (« 2/4 ») : comptage exact d'événements publics, aucune inférence. */
+export interface OppSeenCard {
+  card_id: string;
+  name: string;
+  count: number; // exemplaires vus joués depuis la main adverse (max 4 par règle)
+}
+
 export interface LiveState {
   active: boolean;
   room_code: string | null;
@@ -168,6 +175,7 @@ export interface LiveState {
   recent_matches?: RecentMatch[];
   lethal?: Lethal;
   defense?: DefenseState;
+  opp_seen?: OppSeenCard[];
   draw_odds?: DrawOdds;
   features?: Record<string, boolean>;
 }

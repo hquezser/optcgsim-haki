@@ -114,6 +114,10 @@ class LiveState:
         # on retient donc l'ensemble des cartes VUES dans chaque zone (board joué, trash) —
         # robuste et suffisant pour le fair-play (board + trash publics).
         self._seen_zone: dict[int, dict[int, set]] = {}
+        # Comptage PUBLIC des exemplaires joués depuis la main, par joueur RZ1 (« 2/4 ») :
+        # +1 quand une carte quitte la main vers une zone visible (pose, counter/event),
+        # -1 si elle y retourne (bounce) — un re-play ne compte alors pas double.
+        self._rz_played: dict[int, dict[str, int]] = {}
         # Cartes retirées du board adverse par un effet EXPLICITE (KO / Destroyed / Trash par
         # effet). On ne se fie PAS à la zone trash du flux RZ1 pour ça : un counter défaussé
         # depuis la main produit le même signal de zone, ce qui retirerait à tort un exemplaire
@@ -213,6 +217,7 @@ class LiveState:
         # my_deck_name N'EST PAS effacé : "Playing with deck" précède le reset (sélection
         # avant shuffles) et reste valable pour la partie qui démarre.
         self._seen_zone.clear()
+        self._rz_played.clear()
         self._opp_removed.clear()
         self._opp_has_snapshot = False
         self._turn = 1
@@ -390,6 +395,14 @@ class LiveState:
                 elif ev.card in ids:
                     ids.remove(ev.card)
                 self._update_hand_counts()
+        # Comptage des exemplaires joués depuis la main (« vus 2/4 ») : événements PUBLICS
+        # uniquement. Les KO (2→6) ne comptent pas — l'exemplaire a été compté à la pose.
+        if isinstance(action, int) and isinstance(zone, int):
+            played = self._rz_played.setdefault(ev.player, {})
+            if (action, zone) in ((1, 2), (1, 6)):
+                played[ev.card] = played.get(ev.card, 0) + 1
+            elif (action, zone) == (2, 1) and played.get(ev.card, 0) > 0:
+                played[ev.card] -= 1
         # Cumule les cartes VUES dans chaque zone publique (board/trash).
         if isinstance(zone, int):
             self._seen_zone.setdefault(ev.player, {}).setdefault(zone, set()).add(ev.card)
@@ -438,6 +451,16 @@ class LiveState:
         self.opp.trash_ids = sorted(zones.get(self._Z_TRASH, set()))
         self.opp.hand_ids = []
         self.opp.hand_count_known = False
+
+    def opp_played_counts(self) -> dict[str, int]:
+        """Exemplaires adverses VUS joués depuis la main (public, exact), par card_id.
+
+        Ne compte que ce qui a quitté la main adverse vers une zone visible ; ne révèle
+        rien de caché (compatible fair-play). Max 4 par carte selon les règles du jeu."""
+        pnum = self._opp_player_num()
+        if pnum is None:
+            return {}
+        return {c: n for c, n in self._rz_played.get(pnum, {}).items() if n > 0}
 
     def _opp_board_seen(self) -> set:
         pnum = self._opp_player_num()

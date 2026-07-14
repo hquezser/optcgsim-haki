@@ -1212,3 +1212,83 @@ def test_my_leader_and_reliable_odds_from_logged_deck(tmp_path, monkeypatch):
     odds = payload.get("draw_odds")
     assert odds is not None and odds["reliable"] is True
     assert odds["deck_name"] == "MonDeck"
+
+
+# ---------------------------------------------------------------------------
+# Exemplaires adverses vus (« 2/4 ») : comptage public exact depuis le flux RZ1.
+# ---------------------------------------------------------------------------
+
+def _rz(seq, player, card, action, zone):
+    """Ligne RZ1 minimale : RZ1|seq|player|card|action|deck_after|zone|..."""
+    return f"[ReplaySync] RZ1|{seq}|{player}|{card}|{action}|0|{zone}|0|0|1|0|0|0"
+
+
+def _solo_less_state():
+    """État à deux joueurs identifiés (moi=1, adv=2), prêt à recevoir du flux RZ1."""
+    from optcgsim_haki.live import LiveState
+    s = LiveState()
+    s.feed_line("shuffle deck for Foe#2222")
+    s.feed_line("shuffle deck for Me#0000")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")  # ma pioche -> me=player1
+    s.feed_line("Hand before Mulligan: [OP01-001]")
+    assert s.me_tag == "Me#0000" and s.opp_tag == "Foe#2222"
+    return s
+
+
+def test_opp_played_counts_pose_and_counter():
+    """Pose (1→2) et counter/event depuis la main (1→6) comptent chacun un exemplaire."""
+    s = _solo_less_state()
+    s.feed_line(_rz(10, 2, "OP09-002", 1, 2))   # pose
+    s.feed_line(_rz(11, 2, "OP09-002", 1, 2))   # 2e exemplaire posé
+    s.feed_line(_rz(12, 2, "EB04-005", 1, 6))   # counter défaussé depuis la main
+    assert s.opp_played_counts() == {"OP09-002": 2, "EB04-005": 1}
+
+
+def test_opp_played_counts_ko_does_not_double_count():
+    """Un KO (2→6, board→trash) ne recompte pas l'exemplaire déjà compté à la pose."""
+    s = _solo_less_state()
+    s.feed_line(_rz(10, 2, "OP09-002", 1, 2))   # pose
+    s.feed_line(_rz(11, 2, "OP09-002", 2, 6))   # KO
+    assert s.opp_played_counts() == {"OP09-002": 1}
+
+
+def test_opp_played_counts_bounce_then_replay_counts_once():
+    """Bounce (2→1, retour en main) décompte ; le re-play recompte -> net 1 exemplaire."""
+    s = _solo_less_state()
+    s.feed_line(_rz(10, 2, "OP09-002", 1, 2))   # pose
+    s.feed_line(_rz(11, 2, "OP09-002", 2, 1))   # bounce -> retour main
+    assert s.opp_played_counts() == {}
+    s.feed_line(_rz(12, 2, "OP09-002", 1, 2))   # re-play
+    assert s.opp_played_counts() == {"OP09-002": 1}
+
+
+def test_opp_played_counts_ignores_my_plays_and_resets():
+    """Mes propres poses ne comptent pas ; reset_match remet à zéro."""
+    s = _solo_less_state()
+    s.feed_line(_rz(10, 1, "OP01-013", 1, 2))   # MA pose (player 1)
+    s.feed_line(_rz(11, 2, "OP09-002", 1, 2))
+    assert s.opp_played_counts() == {"OP09-002": 1}
+    s.reset_match()
+    assert s.opp_played_counts() == {}
+
+
+def test_state_payload_exposes_opp_seen_sorted(tmp_path, monkeypatch):
+    """Le payload expose opp_seen trié par count desc, avec noms résolus."""
+    monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    s = srv.state
+    s.feed_line("shuffle deck for Foe#2222")
+    s.feed_line("shuffle deck for Me#0000")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")
+    s.feed_line("Hand before Mulligan: [OP01-001]")
+    for seq in (10, 11):
+        s.feed_line(_rz(seq, 2, "OP09-002", 1, 2))
+    s.feed_line(_rz(12, 2, "OP09-009", 1, 2))
+
+    payload = srv._state_payload()
+    seen = payload["opp_seen"]
+    assert [c["card_id"] for c in seen] == ["OP09-002", "OP09-009"]
+    assert seen[0]["count"] == 2 and seen[1]["count"] == 1
+    assert seen[0]["name"]  # nom résolu (seed : Uta)

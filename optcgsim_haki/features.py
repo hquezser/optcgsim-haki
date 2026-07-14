@@ -17,6 +17,9 @@ _DEFAULTS = {
     # Défense : ma vie/counters/blockers (MES snapshots = exacts) face au board adverse
     # VISIBLE (cartes posées = publiques). Fiable -> ON par défaut.
     "live_defense": True,
+    # Exemplaires adverses vus (« 2/4 ») : pur comptage d'événements publics (cartes jouées
+    # depuis la main adverse). Fiable -> ON par défaut.
+    "live_opp_seen": True,
     "live_opp_hand": False,
     "live_opp_life": False,
     "live_lethal": False,
