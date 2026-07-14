@@ -23,7 +23,12 @@ des cartes vues, et stocke tout dans SQLite.
 ## Installation
 
 ```bash
+# Depuis une release GitHub (recommandé : wheel avec le dashboard pré-buildé, npm inutile) :
+pip install optcgsim_haki-<version>-py3-none-any.whl
+
+# Depuis les sources (dev) :
 pip install -e .          # + extras dev : pip install -e ".[dev]"
+./scripts/build_frontend.sh   # requiert Node >= 20.9 — build le dashboard web embarqué
 ```
 
 ## Utilisation

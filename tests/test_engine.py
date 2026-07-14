@@ -301,6 +301,10 @@ def test_state_payload_opp_life_from_base_minus_damage(tmp_path):
     db = tmp_path / "t.db"
     _seed_db(db)
     srv = LiveEngine(str(db), reveal_all=False)
+    # card_meta injecté : hermétique (ne dépend pas du .pck du jeu présent sur la machine).
+    class _Meta:
+        def __init__(self, life): self.life = life
+    srv.card_meta = {"OP09-001": _Meta(5)}
     st = _live_match(srv, opp_leader="OP09-001")  # Shanks, life 5
     st.opp.life = None  # live : pas de snapshot adverse
     # Aucun dégât -> vie de base.
@@ -325,6 +329,10 @@ def test_state_payload_opp_life_from_life_added_to_hand(tmp_path):
     db = tmp_path / "t.db"
     _seed_db(db)
     srv = LiveEngine(str(db), reveal_all=False)
+    # card_meta injecté : hermétique (ne dépend pas du .pck du jeu présent sur la machine).
+    class _Meta:
+        def __init__(self, life): self.life = life
+    srv.card_meta = {"OP09-001": _Meta(5)}
     st = _live_match(srv, me_leader="OP09-001", opp_leader="OP09-001")  # Shanks, vie 5
     st.me.life = 4       # ma vie snapshot : j'ai perdu 1
     st.opp.life = None   # live : pas de snapshot adverse
