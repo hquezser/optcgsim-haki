@@ -88,6 +88,7 @@ export interface NextPlay {
 export interface HandScore {
   score: number;
   verdict: "Garder" | "Mulligan" | "Neutre";
+  avg_hand_score?: number | null; // moyenne du deck (référence des seuils relatifs)
 }
 
 export interface MatchupStats {
@@ -162,6 +163,7 @@ export interface LiveState {
   win_reason: string | null;
   reveal_all: boolean;
   is_solo?: boolean;      // true = Solo vs Self (les deux joueurs sont locaux)
+  in_mulligan?: boolean;  // true = fenêtre de mulligan (décision T0, avant tout jeu sur le board)
   exact_state?: boolean;  // true = état servi par le mod BepInEx (exact), pas le log (inféré)
   me: PlayerState | null;
   opp: PlayerState | null;

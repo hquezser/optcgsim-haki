@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchState } from "@/lib/api";
 import type { LiveState } from "@/lib/types";
 import { DefensePanel } from "@/components/DefensePanel";
+import { MulliganPanel } from "@/components/MulliganPanel";
 import { OppSeenPanel } from "@/components/OppSeenPanel";
 import { LethalPanel } from "@/components/LethalPanel";
 import { MenacesPanel } from "@/components/MenacesPanel";
@@ -122,6 +123,13 @@ export default function OverlayPage() {
         {!data && <div className={CARD}>En attente du jeu…</div>}
 
         {data && (data.me || data.opp) && <StatusLine data={data} />}
+
+        {/* Mulligan : décision du tour 0, visible seulement pendant la fenêtre de mulligan. */}
+        {data?.in_mulligan && data.hand_score && (
+          <div className={CARD}>
+            <MulliganPanel hand={data.hand_score} />
+          </div>
+        )}
 
         {/* Défense : 100 % exact/public (mes counters/blockers/vie + board adverse visible). */}
         {data?.defense && (

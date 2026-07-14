@@ -937,9 +937,18 @@ class LiveState:
             "win_reason": self.win_reason,
             "reveal_all": reveal_all,
             "is_solo": self.is_solo,
+            # Phase mulligan : partie active, main de départ connue, aucun jeu sur le board
+            # encore (self._played passe à True au 1er déploiement). Fenêtre de la décision T0.
+            "in_mulligan": self.in_mulligan,
             "me": self._player_dict(self.me, reveal_all) if self.me else None,
             "opp": self._player_dict(self.opp, reveal_all) if self.opp else None,
         }
+
+    @property
+    def in_mulligan(self) -> bool:
+        """True pendant la fenêtre de mulligan (avant tout jeu sur le board)."""
+        return bool(self.active and not self._played
+                    and self.me is not None and self.me.hand_ids)
 
     # --- Rendu ---
     def render(self, reveal_all: bool = False) -> str:

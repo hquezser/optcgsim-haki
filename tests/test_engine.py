@@ -1425,3 +1425,34 @@ def test_logged_deck_ignored_when_contradicted_by_seen_cards(tmp_path, monkeypat
     payload = srv._state_payload()
     odds = payload.get("draw_odds")
     assert odds is None or not odds.get("reliable")
+
+
+# ---------------------------------------------------------------------------
+# in_mulligan : fenêtre de la décision du tour 0 (avant tout jeu sur le board).
+# ---------------------------------------------------------------------------
+
+def test_in_mulligan_true_during_opening_then_false_after_board_play():
+    from optcgsim_haki.live import LiveState
+    s = LiveState()
+    assert s.in_mulligan is False                      # pas de partie
+    s.feed_line("shuffle deck for Foe#2222")
+    s.feed_line("shuffle deck for Me#0000")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")
+    s.feed_line("Hand before Mulligan: [OP01-001]")
+    assert s.in_mulligan is True                       # main de départ connue, rien joué
+    # Un jeu sur le board (RZ1 action 1 zone 2) -> _played True -> fenêtre close.
+    s.feed_line("[ReplaySync] RZ1|10|1|OP01-001|1|0|2|0|0|1|0|0|0")
+    assert s.in_mulligan is False
+
+
+def test_in_mulligan_exposed_in_payload(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    s = srv.state
+    s.feed_line("shuffle deck for Foe#2222")
+    s.feed_line("shuffle deck for Me#0000")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")
+    s.feed_line("Hand before Mulligan: [OP01-001]")
+    assert srv._state_payload()["in_mulligan"] is True
