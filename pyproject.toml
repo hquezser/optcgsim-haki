@@ -31,7 +31,8 @@ optcgsim-haki = "optcgsim_haki.cli:main"
 include = ["optcgsim_haki*"]
 
 [tool.setuptools.package-data]
-optcgsim_haki = ["static/**/*"]
+# schema.sql : lu au runtime par db/store.py (indispensable). static/** : dashboard embarqué.
+optcgsim_haki = ["db/*.sql", "static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

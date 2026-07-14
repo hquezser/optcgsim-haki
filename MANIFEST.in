@@ -1,5 +1,8 @@
 include LICENSE
 include README.md
 
+# Schéma SQLite lu au runtime (db/store.py) — indispensable au fonctionnement.
+include optcgsim_haki/db/*.sql
+
 # Frontend statique pré-buildé (servi par FastAPI)
 recursive-include optcgsim_haki/static *
