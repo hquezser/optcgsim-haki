@@ -39,6 +39,9 @@ export interface DefenseState {
   opp_leader_known: boolean;  // false = leader adverse pas encore compté dans opp_power
   lives_at_risk?: number;
   opp_can_lethal?: boolean;
+  // Counter TOTAL requis pour ne perdre aucune vie ce tour (règle : l'égalité favorise
+  // l'attaquant, il faut dépasser). null si la simulation n'a pas pu tourner.
+  counter_to_hold?: number | null;
 }
 
 export interface ExpectedCard {

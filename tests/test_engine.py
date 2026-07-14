@@ -399,10 +399,11 @@ def test_compute_lethal_blocked_by_blockers():
 
 
 def test_compute_lethal_countered():
-    """Attaques 7000 vs leader 5000 : besoin de 2000 counter par attaque.
-    3 attaques, 4000 counter → 2 contrées, 1 passe → pas lethal si life=2."""
+    """Attaques 7000 vs leader 5000 : l'égalité favorise l'ATTAQUANT (règle OPTCG), il faut
+    donc DÉPASSER 7000 → 3000 de counter par attaque. 3 attaques, 6000 counter →
+    2 contrées, 1 passe → pas lethal si life=2."""
     r = _compute_lethal(atk_leader_power=7000, atk_board=[(7000, False), (7000, False)],
-                        def_life=2, def_leader_power=5000, def_blockers=0, def_counter_pool=4000)
+                        def_life=2, def_leader_power=5000, def_blockers=0, def_counter_pool=6000)
     assert r["can_lethal"] is False
     assert r["lives_dealt"] == 1
 
@@ -437,10 +438,11 @@ def test_compute_lethal_insufficient_data():
 
 def test_compute_lethal_greedy_blocker_assignment():
     """L'algorithme doit bloquer les attaques les plus fortes en priorité.
-    Attaques [10000, 5000] vs leader 5000, 1 blocker :
-    - Blocker absorbe le 10000 → 5000 vs leader 5000 → leader gagne → 0 life perdue."""
+    Attaques [10000, 5000] vs leader 6000, 1 blocker :
+    - Blocker absorbe le 10000 → 5000 vs leader 6000 → l'attaque échoue → 0 life perdue.
+    (Rappel règle OPTCG : à power ÉGALE l'attaquant gagne — le défenseur doit être au-dessus.)"""
     r = _compute_lethal(atk_leader_power=10000, atk_board=[(5000, False)],
-                        def_life=1, def_leader_power=5000, def_blockers=1, def_counter_pool=0)
+                        def_life=1, def_leader_power=6000, def_blockers=1, def_counter_pool=0)
     assert r["can_lethal"] is False
     assert r["lives_dealt"] == 0
 
@@ -493,7 +495,8 @@ def test_state_payload_lethal_opp_can_lethal(tmp_path):
     p = srv._state_payload()
     assert "lethal" in p
     assert p["lethal"]["opp_can_lethal"] is True
-    assert p["lethal"]["lives_at_risk"] == 2  # 9000+9000 passent, 5000 absorbé par leader
+    # 9000+9000 passent, et le leader 5000 vs leader 5000 passe AUSSI (égalité -> attaquant).
+    assert p["lethal"]["lives_at_risk"] == 3
     assert p["lethal"]["opp_power"] == 23000  # 5000 + 9000 + 9000
 
 
@@ -514,7 +517,8 @@ def test_state_payload_lethal_safe_with_blockers(tmp_path):
     st.me.hand_count_known = True
     p = srv._state_payload()
     assert p["lethal"]["opp_can_lethal"] is False
-    assert p["lethal"]["lives_at_risk"] == 0  # 2 bloquées + 1 absorbée par leader
+    # 2 attaques bloquées ; le leader adverse 5000 vs mon leader 5000 passe (égalité).
+    assert p["lethal"]["lives_at_risk"] == 1
     assert p["lethal"]["my_blockers"] == 2
 
 
@@ -537,13 +541,14 @@ def test_state_payload_lethal_me_can_lethal(tmp_path):
     st.opp.board_ids = []
     p = srv._state_payload()
     assert p["lethal"]["me_can_lethal"] is True
-    assert p["lethal"]["lives_i_can_deal"] == 2  # 6000+6000 passent, 5000 absorbé par leader adverse
+    # 6000+6000 passent, et mon leader 5000 vs leader adverse 5000 passe AUSSI (égalité).
+    assert p["lethal"]["lives_i_can_deal"] == 3
     assert p["lethal"]["me_attacks"] == 3
 
 
 def test_state_payload_lethal_with_counters_in_hand(tmp_path):
-    """Mes counters en main réduisent le danger : opp attaque 7000, mon leader 5000,
-    j'ai 2000 counter en main → je gagne le clash → 0 life perdue."""
+    """Mes counters en main entrent dans la simulation — mais l'égalité favorise
+    l'attaquant (règle OPTCG) : 5000+2000 = 7000 vs 7000 ne suffit PAS."""
     db = tmp_path / "t.db"
     _seed_db(db)
     _seed_card_stats(db)
@@ -558,9 +563,11 @@ def test_state_payload_lethal_with_counters_in_hand(tmp_path):
     st.me.hand_ids = ["OP09-002"]
     st.me.hand_count_known = True
     p = srv._state_payload()
-    # Attaques : [7000, 5000]. Leader 5000 gagne le 5000. Le 7000 : 5000+2000=7000 → gagne → 0 life.
-    assert p["lethal"]["opp_can_lethal"] is False
-    assert p["lethal"]["lives_at_risk"] == 0
+    # Attaques : [7000, 5000]. Égalité -> attaquant (règle OPTCG) : mes 2000 de counter ne
+    # suffisent pas contre le 7000 (5000+2000=7000 = égalité = perdu), et le 5000 adverse
+    # passe aussi contre mon leader 5000 -> je perds mes vies : lethal au board.
+    assert p["lethal"]["opp_can_lethal"] is True
+    assert p["lethal"]["lives_at_risk"] == 1  # le 7000 passe (3000 requis > 2000), le 5000 est contré
     assert p["lethal"]["my_counter_pool"] == 2000
 
 
@@ -1292,3 +1299,55 @@ def test_state_payload_exposes_opp_seen_sorted(tmp_path, monkeypatch):
     assert [c["card_id"] for c in seen] == ["OP09-002", "OP09-009"]
     assert seen[0]["count"] == 2 and seen[1]["count"] == 1
     assert seen[0]["name"]  # nom résolu (seed : Uta)
+
+
+# ---------------------------------------------------------------------------
+# counter_to_hold : besoin exact de counter pour ne perdre aucune vie ce tour.
+# ---------------------------------------------------------------------------
+
+def test_counter_to_hold_single_attacker():
+    """1 attaquant 6000 vs leader 5000 : il faut DÉPASSER 6000 -> 2000 (pas 1000)."""
+    r = _compute_lethal(atk_leader_power=6000, atk_board=[],
+                        def_life=3, def_leader_power=5000, def_blockers=0, def_counter_pool=0)
+    assert r["counter_to_hold"] == 2000
+
+
+def test_counter_to_hold_equal_power_needs_1000():
+    """Égalité 5000 vs 5000 : l'attaquant gagne -> 1000 de counter pour tenir."""
+    r = _compute_lethal(atk_leader_power=5000, atk_board=[],
+                        def_life=3, def_leader_power=5000, def_blockers=0, def_counter_pool=0)
+    assert r["counter_to_hold"] == 1000
+
+
+def test_counter_to_hold_blocker_absorbs_strongest():
+    """Le blocker absorbe la plus forte attaque : [9000, 5000] vs leader 6000, 1 blocker
+    -> 9000 bloqué, 5000 < 6000 échoue -> 0 counter requis."""
+    r = _compute_lethal(atk_leader_power=9000, atk_board=[(5000, False)],
+                        def_life=3, def_leader_power=6000, def_blockers=1, def_counter_pool=0)
+    assert r["counter_to_hold"] == 0
+    assert r["lives_dealt"] == 0
+
+
+def test_counter_to_hold_sums_all_unblocked():
+    """[7000, 6000, 5000] vs leader 5000, 0 blocker : 3000 + 2000 + 1000 = 6000."""
+    r = _compute_lethal(atk_leader_power=7000, atk_board=[(6000, False), (5000, False)],
+                        def_life=5, def_leader_power=5000, def_blockers=0, def_counter_pool=0)
+    assert r["counter_to_hold"] == 6000
+
+
+def test_defense_payload_carries_counter_to_hold(tmp_path):
+    """Le bloc defense expose counter_to_hold quand la simulation est disponible."""
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    _seed_lethal_cards(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    st = _live_match(srv, me_leader="LME", opp_leader="LOPP")
+    st.me.life = 3
+    st.opp.board_ids = ["BIG"]          # 10000 power
+    st.me.board_ids = []
+    st.me.hand_ids = []
+    st.me.hand_count_known = True
+    p = srv._state_payload()
+    d = p["defense"]
+    # Attaques adverses : leader 5000 (1000 requis) + BIG 10000 (6000 requis) = 7000.
+    assert d["counter_to_hold"] == 7000

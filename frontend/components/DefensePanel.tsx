@@ -60,6 +60,19 @@ export function DefensePanel({
           )}
         </span>
       </div>
+      {defense.counter_to_hold != null && (
+        <div
+          className={`mt-0.5 text-[11px] tabular-nums ${
+            defense.my_counter_pool >= defense.counter_to_hold
+              ? "text-green-400" : "text-amber-400"
+          }`}
+          title="Counter total requis pour ne perdre aucune vie ce tour (blockers déjà déduits ; l'égalité favorise l'attaquant)"
+        >
+          Tenir ce tour : {k(defense.counter_to_hold)} counter
+          {defense.my_counter_pool >= defense.counter_to_hold
+            ? " ✓" : ` (tu as ${k(defense.my_counter_pool)})`}
+        </div>
+      )}
       {spent && spent.count > 0 && (
         <div
           className="mt-0.5 text-[11px] text-slate-400"

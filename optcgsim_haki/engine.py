@@ -325,11 +325,16 @@ def _compute_lethal(
     counter_pool = def_counter_pool
     leader_p = def_leader_power or 0
     lives_lost = 0
+    counter_to_hold = 0  # counter TOTAL pour ne perdre aucune vie (blockers déjà déduits)
     for atk in attacks:
         if blockers_left > 0:
             blockers_left -= 1
             continue  # bloqué → pas de dommage au leader
-        needed = max(0, atk - leader_p)  # counters requis pour gagner le clash
+        # Counters requis pour SURVIVRE au clash. Règle OPTCG : l'attaque réussit si
+        # power >= défense — l'égalité favorise l'ATTAQUANT. Il faut donc dépasser
+        # strictement, par pas de 1000 (granularité des counters).
+        needed = 0 if atk < leader_p else ((atk - leader_p) // 1000 + 1) * 1000
+        counter_to_hold += needed
         if counter_pool >= needed:
             counter_pool -= needed
             continue  # contré → pas de dommage
@@ -343,6 +348,8 @@ def _compute_lethal(
         "defender_life": def_life,
         "defender_blockers": def_blockers,
         "defender_counter_pool": def_counter_pool,
+        # Besoin exact pour tenir TOUTES les vies ce tour (indépendant du pool fourni).
+        "counter_to_hold": counter_to_hold,
     }
 
 
@@ -760,6 +767,7 @@ class LiveEngine:
             "opp_power": sum(opp_attackers) if opp_attackers else None,
             "opp_attacks": len(opp_attackers) if opp_attackers else None,
             "lives_at_risk": opp_sim["lives_dealt"] if opp_sim else 0,
+            "counter_to_hold": opp_sim.get("counter_to_hold") if opp_sim else None,
             "my_life": me_life,
             "my_blockers": my_blockers,
             "my_counter_pool": my_counter_pool,
@@ -1016,6 +1024,7 @@ class LiveEngine:
         if lethal:
             defense["lives_at_risk"] = lethal.get("lives_at_risk", 0)
             defense["opp_can_lethal"] = lethal.get("opp_can_lethal", False)
+            defense["counter_to_hold"] = lethal.get("counter_to_hold")
 
     def _state_payload_from_log(self) -> dict:
         """Payload reconstruit depuis Player.log (comportement historique)."""
