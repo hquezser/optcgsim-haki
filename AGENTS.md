@@ -16,7 +16,7 @@ python3 -m build
 pip install -e .
 
 # Installer depuis le wheel
-pip install dist/optcgsim_haki-0.1.0-py3-none-any.whl
+pip install dist/optcgsim_haki-*.whl
 ```
 
 ## Architecture
@@ -45,7 +45,7 @@ pip install dist/optcgsim_haki-0.1.0-py3-none-any.whl
    ```bash
    python3 -m build
    ```
-   Produit `dist/optcgsim_haki-0.1.0-py3-none-any.whl` + `dist/optcgsim_haki-0.1.0.tar.gz`.
+   Produit un wheel et un sdist versionnés dans `dist/`.
 
 3. **Publier** :
    ```bash

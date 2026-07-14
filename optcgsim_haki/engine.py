@@ -1101,8 +1101,7 @@ class LiveEngine:
             if payload[side_key].get("life") is not None:
                 return  # snapshot texte (AutoSaved) -> fait foi
             meta = self.card_meta.get(leader)
-            if not meta or meta.life is None:
-                return
+            base_life = meta.life if (meta and meta.life is not None) else 5
             damage = self.state.leader_damage(leader)
             if side_key == "opp":
                 # En LIVE, pas de "hit for N damage" -> leader_damage=0. On dérive les pertes
@@ -1111,12 +1110,12 @@ class LiveEngine:
                 # deux sources (hits AutoSaved vs life-to-hand live). Estimation (un soin la
                 # fausse) mais bien plus juste que la vie de base figée.
                 mm = self.card_meta.get(me_leader) if me_leader else None
+                my_base_life = mm.life if (mm and mm.life is not None) else 5
                 my_life = (payload.get("me") or {}).get("life")
-                my_lost = (max(0, mm.life - my_life)
-                           if (mm and mm.life is not None and my_life is not None) else 0)
+                my_lost = max(0, my_base_life - my_life) if my_life is not None else 0
                 derived = max(0, self.state._life_to_hand - my_lost)
                 damage = max(damage, derived)
-            life = meta.life - damage
+            life = base_life - damage
             payload[side_key]["life"] = life if life >= 0 else None
 
         _apply_life("opp", opp_leader)

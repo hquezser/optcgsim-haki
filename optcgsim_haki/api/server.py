@@ -27,6 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from .. import __version__
 from ..analytics import Analytics
 from ..cardimages import resolve_image, content_type
 from ..db.store import Store
@@ -179,7 +180,7 @@ def _detect_highlights(snapshots: list[dict], events: list[dict], match: dict) -
 
 def create_app(db_path: str = "optcg.db", reveal_all: bool = False) -> FastAPI:
     """Crée l'application FastAPI. Un seul LiveEngine partagé (thread-safe via lock)."""
-    app = FastAPI(title="OPTCGSim Haki API", version="0.2.0")
+    app = FastAPI(title="OPTCGSim Haki API", version=__version__)
 
     # CORS : le frontend Next.js tourne sur un port différent en dev (5173/3000).
     # allow_credentials=False : l'API ne lit jamais de cookies/auth (lecture publique locale),

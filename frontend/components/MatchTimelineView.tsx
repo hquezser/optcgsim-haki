@@ -251,7 +251,6 @@ function ValueBarChart({
   const maxAbs = Math.max(...data.map(d => Math.abs(d.value)), 1);
   const H = 120;
   const barH = 50;
-  const midY = H / 2;
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">

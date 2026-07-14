@@ -7,13 +7,11 @@ des helpers de normalisation. Le parser de match (`match.py`) consomme ces token
 from __future__ import annotations
 
 import re
-
-# Les pseudos contiennent un espace de largeur nulle (U+200B) avant le '#'. On le retire.
-ZERO_WIDTH = "​"
+import unicodedata
 
 
 def clean(text: str) -> str:
-    return text.replace(ZERO_WIDTH, "").strip()
+    return "".join(char for char in text if unicodedata.category(char) != "Cf").strip()
 
 
 # cardID : préfixe set (2-4 lettres + 2 chiffres) + '-' + 3 chiffres, OU promo 'P-xxx'.

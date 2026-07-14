@@ -1,6 +1,6 @@
 "use client";
 
-import type { LiveState, Lethal, TriggerRisk, CounterAnalysis } from "@/lib/types";
+import type { LiveState } from "@/lib/types";
 
 /**
  * CoachAlerts — synthèse anti-surcharge visuelle.
