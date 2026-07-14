@@ -155,6 +155,14 @@ export interface OppSeenCard {
   count: number; // exemplaires vus joués depuis la main adverse (max 4 par règle)
 }
 
+/** Carte CONNUE en main adverse via révélation publique (« Reveal and Draw »). Info rendue
+ *  publique par le jeu — jamais la main cachée reconstruite. Borne basse exacte de sa main. */
+export interface OppKnownCard {
+  card_id: string;
+  name: string;
+  count: number;
+}
+
 export interface LiveState {
   active: boolean;
   room_code: string | null;
@@ -181,6 +189,7 @@ export interface LiveState {
   lethal?: Lethal;
   defense?: DefenseState;
   opp_seen?: OppSeenCard[];
+  opp_known_hand?: OppKnownCard[];
   draw_odds?: DrawOdds;
   features?: Record<string, boolean>;
 }

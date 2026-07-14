@@ -56,6 +56,10 @@ RE_ATTACH_DON = re.compile(r"^Attach (?P<n>\d+) (?:Rested )?Don")
 RE_ATTACK = re.compile(
     rf'^.*?\[<mark><link="(?P<att>{CARD_ID})">.*?attacking .*?\[<mark><link="(?P<def>{CARD_ID})">'
 )
+# Tutor/pioche PUBLIQUE : "<Source> [id]: Reveal and Draw <Nom> [id]". La carte piochée
+# (2e lien, celui APRÈS "Reveal and Draw") entre en main avec identité RÉVÉLÉE — info publique
+# (fair-play OK, contrairement aux pioches RZ1 privées). On capture l'id de la carte piochée.
+RE_REVEAL_DRAW = re.compile(rf'Reveal and Draw\b.*?\[<mark><link="(?P<id>{CARD_ID})">')
 RE_COUNTER = re.compile(rf'^Discard\s+.*?\[<mark><link="(?P<id>{CARD_ID})">.*?for Counter (?P<val>\d+)')
 # Event [Counter] joué en défense depuis la main : "<Nom> [id]: Activate Counter".
 # Distinct du counter de coin (RE_COUNTER) : pas de valeur, et la carte n'est PAS défaussée

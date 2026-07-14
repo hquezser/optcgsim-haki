@@ -910,7 +910,7 @@ class LiveEngine:
         if exact:
             for k in ("live_opp_hand", "live_opp_life", "live_lethal",
                       "live_menaces", "live_trigger_risk", "live_archetype",
-                      "live_draw_odds", "live_defense", "live_opp_seen"):
+                      "live_draw_odds", "live_defense", "live_opp_seen", "live_opp_known_hand"):
                 feats[k] = True
         payload["features"] = feats
         # Retirer les champs approximatifs dont le flag est OFF. La défense (fiable, construite
@@ -919,6 +919,8 @@ class LiveEngine:
             payload.pop("defense", None)
         if not feats.get("live_opp_seen"):
             payload.pop("opp_seen", None)
+        if not feats.get("live_opp_known_hand"):
+            payload.pop("opp_known_hand", None)
         if not feats["live_lethal"]:
             payload.pop("lethal", None)
         if not feats["live_menaces"]:
@@ -1345,6 +1347,15 @@ class LiveEngine:
             payload["opp_seen"] = [
                 {"card_id": cid, "name": self.archetype._name(cid), "count": n}
                 for cid, n in sorted(played.items(), key=lambda kv: (-kv[1], kv[0]))
+            ]
+
+        # Cartes CONNUES en main adverse via révélation publique ("Reveal and Draw") : borne
+        # basse exacte de sa main. Fiable/public — jamais la main cachée reconstruite.
+        known = self.state.opp_known_hand()
+        if known:
+            payload["opp_known_hand"] = [
+                {"card_id": cid, "name": self.archetype._name(cid), "count": n}
+                for cid, n in sorted(known.items(), key=lambda kv: (-kv[1], kv[0]))
             ]
 
         # A — Score de la main de départ (recalcul uniquement si la main change).

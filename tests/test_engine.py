@@ -1456,3 +1456,59 @@ def test_in_mulligan_exposed_in_payload(tmp_path, monkeypatch):
     s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")
     s.feed_line("Hand before Mulligan: [OP01-001]")
     assert srv._state_payload()["in_mulligan"] is True
+
+
+# ---------------------------------------------------------------------------
+# Chantier I — Revealed Hand Tracker (cartes connues en main adverse via reveal public).
+# ---------------------------------------------------------------------------
+
+_REVEAL = ('[Foe#2222] Uta [<mark><link="OP09-002">OP09-002</link></mark>]: '
+           '<b>Reveal and Draw {name} [<mark><link="{cid}">{cid}</link></mark>]</b>')
+
+
+def test_opp_known_hand_from_reveal_then_decrement_on_play():
+    """'Reveal and Draw X' côté adverse -> X connu en main ; quand l'adversaire joue X
+    (RZ1 1→2), il quitte la main connue."""
+    s = _solo_less_state()  # me=player1/Me#0000, opp=player2/Foe#2222
+    s.feed_line(_REVEAL.format(name="Rockstar", cid="OP16-018"))
+    assert s.opp_known_hand() == {"OP16-018": 1}
+    # 2e révélation du même id -> 2 connus.
+    s.feed_line(_REVEAL.format(name="Rockstar", cid="OP16-018"))
+    assert s.opp_known_hand() == {"OP16-018": 2}
+    # L'adversaire (player 2) joue un exemplaire (main->board) -> 1 restant connu.
+    s.feed_line(_rz(20, 2, "OP16-018", 1, 2))
+    assert s.opp_known_hand() == {"OP16-018": 1}
+    # Counter/event depuis la main (1→6) -> plus aucun connu.
+    s.feed_line(_rz(21, 2, "OP16-018", 1, 6))
+    assert s.opp_known_hand() == {}
+
+
+def test_opp_known_hand_ignores_my_own_reveals():
+    """Une révélation faite par MOI n'alimente pas la main connue ADVERSE."""
+    s = _solo_less_state()
+    s.feed_line('[Me#0000] Boa Hancock [<mark><link="OP12-014">OP12-014</link></mark>]: '
+                '<b>Reveal and Draw Monkey D. Luffy [<mark><link="OP16-015">OP16-015</link></mark>]</b>')
+    assert s.opp_known_hand() == {}
+
+
+def test_opp_known_hand_reset_between_matches():
+    s = _solo_less_state()
+    s.feed_line(_REVEAL.format(name="Rockstar", cid="OP16-018"))
+    assert s.opp_known_hand() == {"OP16-018": 1}
+    s.reset_match()
+    assert s.opp_known_hand() == {}
+
+
+def test_state_payload_exposes_opp_known_hand(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    s = srv.state
+    s.feed_line("shuffle deck for Foe#2222")
+    s.feed_line("shuffle deck for Me#0000")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP01-001|0|49|1|0|1|1|0|0|0")
+    s.feed_line("Hand before Mulligan: [OP01-001]")
+    s.feed_line(_REVEAL.format(name="Uta", cid="OP09-002"))
+    payload = srv._state_payload()
+    assert payload["opp_known_hand"] == [{"card_id": "OP09-002", "name": "Uta", "count": 1}]

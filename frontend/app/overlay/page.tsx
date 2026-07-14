@@ -6,6 +6,7 @@ import type { LiveState } from "@/lib/types";
 import { DefensePanel } from "@/components/DefensePanel";
 import { MulliganPanel } from "@/components/MulliganPanel";
 import { OppSeenPanel } from "@/components/OppSeenPanel";
+import { OppKnownHandPanel } from "@/components/OppKnownHandPanel";
 import { LethalPanel } from "@/components/LethalPanel";
 import { MenacesPanel } from "@/components/MenacesPanel";
 import { DrawOddsPanel } from "@/components/DrawOddsPanel";
@@ -142,6 +143,13 @@ export default function OverlayPage() {
         {data?.opp_seen && data.opp_seen.length > 0 && (
           <div className={CARD}>
             <OppSeenPanel list={data.opp_seen} />
+          </div>
+        )}
+
+        {/* Connu en main adverse : révélations publiques (fair-play). */}
+        {data?.opp_known_hand && data.opp_known_hand.length > 0 && (
+          <div className={CARD}>
+            <OppKnownHandPanel list={data.opp_known_hand} />
           </div>
         )}
 

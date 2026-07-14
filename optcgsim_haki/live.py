@@ -118,6 +118,10 @@ class LiveState:
         # +1 quand une carte quitte la main vers une zone visible (pose, counter/event),
         # -1 si elle y retourne (bounce) — un re-play ne compte alors pas double.
         self._rz_played: dict[int, dict[str, int]] = {}
+        # Cartes d'identité CONNUE actuellement en main, par joueur RZ1 : +1 quand une carte est
+        # tutorisée/piochée publiquement ("Reveal and Draw"), -1 quand elle quitte la main
+        # (flux RZ1). Info PUBLIQUE (le jeu l'a révélée) -> fair-play, ≠ main cachée.
+        self._revealed_to_hand: dict[int, dict[str, int]] = {}
         # Cartes retirées du board adverse par un effet EXPLICITE (KO / Destroyed / Trash par
         # effet). On ne se fie PAS à la zone trash du flux RZ1 pour ça : un counter défaussé
         # depuis la main produit le même signal de zone, ce qui retirerait à tort un exemplaire
@@ -218,6 +222,7 @@ class LiveState:
         # avant shuffles) et reste valable pour la partie qui démarre.
         self._seen_zone.clear()
         self._rz_played.clear()
+        self._revealed_to_hand.clear()
         self._opp_removed.clear()
         self._opp_has_snapshot = False
         self._turn = 1
@@ -403,6 +408,12 @@ class LiveState:
                 played[ev.card] = played.get(ev.card, 0) + 1
             elif (action, zone) == (2, 1) and played.get(ev.card, 0) > 0:
                 played[ev.card] -= 1
+            # Une carte connue quitte la main (pose 1→2, counter/event 1→6, retour deck 1→0)
+            # -> elle n'est plus "connue en main". Décrémente le suivi des révélations.
+            if action == 1 and zone in (0, 2, 6):
+                known = self._revealed_to_hand.get(ev.player)
+                if known and known.get(ev.card, 0) > 0:
+                    known[ev.card] -= 1
         # Cumule les cartes VUES dans chaque zone publique (board/trash).
         if isinstance(zone, int):
             self._seen_zone.setdefault(ev.player, {}).setdefault(zone, set()).add(ev.card)
@@ -426,6 +437,12 @@ class LiveState:
     def _opp_player_num(self) -> int | None:
         for pnum, tag in self._player_to_tag.items():
             if tag == self.opp_tag:
+                return pnum
+        return None
+
+    def _pnum_of_tag(self, tag: str) -> int | None:
+        for pnum, t in self._player_to_tag.items():
+            if t == tag:
                 return pnum
         return None
 
@@ -461,6 +478,17 @@ class LiveState:
         if pnum is None:
             return {}
         return {c: n for c, n in self._rz_played.get(pnum, {}).items() if n > 0}
+
+    def opp_known_hand(self) -> dict[str, int]:
+        """Cartes d'identité CONNUE actuellement en main adverse (public/exact), par card_id.
+
+        Alimenté uniquement par les révélations publiques ("Reveal and Draw"), décrémenté
+        quand la carte quitte la main (flux RZ1). Ne révèle JAMAIS la main cachée reconstruite
+        depuis les pioches RZ1 privées -> compatible fair-play. Borne basse exacte de sa main."""
+        pnum = self._opp_player_num()
+        if pnum is None:
+            return {}
+        return {c: n for c, n in self._revealed_to_hand.get(pnum, {}).items() if n > 0}
 
     def _opp_board_seen(self) -> set:
         pnum = self._opp_player_num()
@@ -724,6 +752,17 @@ class LiveState:
             return
 
         p = self._player(who)
+
+        # Tutor/pioche publique ("<Source>: Reveal and Draw <Carte>") : la carte piochée entre
+        # en main avec identité RÉVÉLÉE. On la mémorise comme "connue en main" du joueur `who`
+        # (info publique -> fair-play). Décrémentée quand elle quitte la main (flux RZ1).
+        mrd = L.RE_REVEAL_DRAW.search(rest)
+        if mrd:
+            pnum = self._pnum_of_tag(who)
+            if pnum is not None:
+                known = self._revealed_to_hand.setdefault(pnum, {})
+                known[mrd.group("id")] = known.get(mrd.group("id"), 0) + 1
+            return
 
         ml = L.RE_LEADER.match(rest)
         if ml:

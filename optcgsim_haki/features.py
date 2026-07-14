@@ -20,6 +20,9 @@ _DEFAULTS = {
     # Exemplaires adverses vus (« 2/4 ») : pur comptage d'événements publics (cartes jouées
     # depuis la main adverse). Fiable -> ON par défaut.
     "live_opp_seen": True,
+    # Cartes CONNUES en main adverse via révélation publique ("Reveal and Draw") : info rendue
+    # publique par le jeu (≠ main cachée). Fiable -> ON par défaut.
+    "live_opp_known_hand": True,
     "live_opp_hand": False,
     "live_opp_life": False,
     "live_lethal": False,
