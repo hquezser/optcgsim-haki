@@ -1362,45 +1362,8 @@ def test_defense_payload_carries_counter_to_hold(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Chantier D — complétude Solo vs Self + garde de cohérence du deck loggé.
+# Garde de cohérence du deck loggé ("Playing with deck" périmé).
 # ---------------------------------------------------------------------------
-
-def _solo_state():
-    """État Solo vs Self minimal : 2 joueurs locaux identifiés via mulligan/RZ1."""
-    from optcgsim_haki.live import LiveState
-    s = LiveState()
-    s.feed_line("shuffle deck for ")
-    s.feed_line("shuffle deck for ")
-    s.feed_line("[ReplaySync] RZ1|1|1|OP12-006|0|49|1|0|1|1|0|0|0")
-    s.feed_line("[ReplaySync] RZ1|2|2|PRB02-003|0|49|1|0|1|1|0|0|0")
-    s.feed_line("Hand after Mulligan: [OP12-006]")
-    s.feed_line("Hand after Mulligan: [PRB02-003]")
-    assert s.is_solo
-    return s
-
-
-def test_solo_counter_attributed_to_non_active_player():
-    """En solo, un counter '[] Discard … for Counter N' se joue pendant le tour de
-    l'AUTRE : attribution exacte au joueur non-actif."""
-    s = _solo_state()
-    s.feed_line("start action phase for player (0), curr state is PlayerTurn_Action")  # p1 actif
-    s.feed_line('[] Discard Koby [<mark><link="PRB02-001">PRB02-001</link></mark>] for Counter 1000')
-    p2 = s.players.get("solo_p2")
-    assert p2 is not None and p2.counters_spent_count == 1 and p2.counters_spent_total == 1000
-
-    s.feed_line("start action phase for player (1), curr state is PlayerTurn_Action")  # p2 actif
-    s.feed_line('[] Discard Nami [<mark><link="OP01-016">OP01-016</link></mark>] for Counter 2000')
-    p1 = s.players.get("solo_p1")
-    assert p1 is not None and p1.counters_spent_count == 1 and p1.counters_spent_total == 2000
-
-
-def test_solo_counter_without_active_player_is_ignored():
-    """Sans joueur actif connu, on ne devine pas l'attribution d'un counter."""
-    s = _solo_state()
-    s.feed_line('[] Discard Koby [<mark><link="PRB02-001">PRB02-001</link></mark>] for Counter 1000')
-    for tag in ("solo_p1", "solo_p2"):
-        p = s.players.get(tag)
-        assert p is None or p.counters_spent_count == 0
 
 
 def test_logged_deck_ignored_when_contradicted_by_seen_cards(tmp_path, monkeypatch):

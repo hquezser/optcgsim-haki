@@ -147,8 +147,6 @@ class LiveState:
         self.is_solo: bool = False
         # N° joueur RZ1 du dernier snapshot [] attribué (pour Board/Trash/Life qui suivent Hand).
         self._solo_snapshot_pnum: int | None = None
-        # N° joueur RZ1 dont c'est le tour (via "start action phase for player (N)").
-        self._solo_active_pnum: int | None = None
 
     # --- Helpers ---
     def _player(self, tag: str) -> LivePlayer:
@@ -231,7 +229,6 @@ class LiveState:
         self._life_to_hand = 0
         self.is_solo = False
         self._solo_snapshot_pnum = None
-        self._solo_active_pnum = None
 
     @property
     def me(self) -> LivePlayer | None:
@@ -532,19 +529,6 @@ class LiveState:
         main (matching avec _rz_hand_ids), puis les Board/Trash/Life qui suivent dans le même
         groupe sont attribués au même joueur.
         """
-        # Counter défaussé ("[] Discard ... for Counter N") : un counter ne se joue que
-        # pendant le tour ADVERSE -> attribution exacte au joueur NON-actif. Sans joueur
-        # actif connu, on ne devine pas.
-        mdc = L.RE_DISCARD_COUNTER.match(rest)
-        if mdc:
-            if self._solo_active_pnum in (1, 2):
-                other = 2 if self._solo_active_pnum == 1 else 1
-                tag = self._player_to_tag.setdefault(other, f"solo_p{other}")
-                p = self._player(tag)
-                p.counters_spent_count += 1
-                if mdc.group("val"):
-                    p.counters_spent_total += int(mdc.group("val"))
-            return
         msh = L.RE_HAND.match(rest)
         if msh:
             hand_ids = L.parse_id_list(msh.group("ids"))
@@ -723,7 +707,6 @@ class LiveState:
         if msap and self.is_solo:
             self._played = True
             rz1_pnum = int(msap.group("pnum")) + 1
-            self._solo_active_pnum = rz1_pnum
             if rz1_pnum not in self._player_to_tag:
                 tag = f"solo_p{rz1_pnum}"
                 self._player_to_tag[rz1_pnum] = tag
