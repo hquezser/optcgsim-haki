@@ -132,6 +132,11 @@ export interface Lethal {
   opp_life: number | null;
   opp_blockers: number;
   opp_counter_est: number;
+  // Modèle « pire cas 2K » : counter adverse maximal (main × 2000, null si main inconnue) et
+  // lethal garanti (tient même contre ce pire cas). Base de l'annonce fiable par défaut.
+  opp_counter_worst: number | null;
+  opp_hand_count: number | null;
+  me_lethal_guaranteed: boolean;
   // --- Solveur : probabilité + plan d'attaque ---
   me_lethal_prob: number | null;       // % de lethal (intégrant le risque trigger)
   me_counter_threshold: number | null; // lethal tient si counters adverses ≤ ce seuil

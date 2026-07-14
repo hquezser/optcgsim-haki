@@ -652,10 +652,15 @@ class LiveEngine:
                     me_attackers.append(p)  # Double Attack = 2 attaques
 
         opp_blockers = sum(1 for cid in opp_board_ids if blocker_by_id.get(cid))
-        # Estimation du pool de counters adverse : main × avg_counter de l'archétype.
+        # Estimation du pool de counters adverse : main × avg_counter de l'archétype (inférée).
         opp_counter_est = 0
         if opp_avg_counter and opp_hand_count and opp_hand_count > 0:
             opp_counter_est = opp_avg_counter * opp_hand_count
+        # PIRE CAS (décision produit) : chaque carte en main adverse = un counter 2K. C'est la
+        # borne fiable — un lethal « garanti » doit passer même contre ça. None si le compte de
+        # main adverse est inconnu (on ne peut alors pas garantir). Max counter/carte = 2000.
+        opp_hand_n = opp_hand_count if (isinstance(opp_hand_count, int) and opp_hand_count >= 0) else None
+        opp_counter_worst = opp_hand_n * 2000 if opp_hand_n is not None else None
         me_don_available = me_don or 0
 
         # _compute_lethal : simulation pour les vies infligeables.
@@ -685,19 +690,26 @@ class LiveEngine:
             )
         me_lethal = _solve_me(opp_counter_est)
 
-        # Seuil de counter : jusqu'à combien de counters adverses le lethal tient-il encore ?
-        # C'est LA métrique de confiance honnête pour un lethal offensif : « tu gagnes sauf si
-        # l'adversaire a ≥ (seuil + 1000) en counters dans sa main cachée ».
+        # Seuil de counter ABSOLU : jusqu'à combien de counters adverses le lethal tient-il ?
+        # Métrique exacte, indépendante de toute estimation : on balaie depuis 0. « Tu gagnes
+        # sauf si l'adversaire a ≥ (seuil + 1000) en counters. » Basé sur le lethal SANS counter
+        # (best case) pour découpler du modèle d'estimation.
+        me_lethal_base = _solve_me(0)
         me_counter_threshold = None
-        if me_lethal and me_lethal["is_lethal"]:
-            pool = opp_counter_est or 0
-            cap = pool + 20000  # borne : au-delà, l'incertitude n'est plus actionnable
+        if me_lethal_base and me_lethal_base["is_lethal"]:
+            pool = 0
+            cap = 20000  # borne : au-delà, l'incertitude n'est plus actionnable
             while pool < cap:
                 nxt = _solve_me(pool + 1000)
                 if not (nxt and nxt["is_lethal"]):
                     break
                 pool += 1000
             me_counter_threshold = pool
+        # Lethal GARANTI (fiable) : tient même dans le pire cas 2K de la main adverse. C'est
+        # l'annonce par défaut demandée ; sinon le lethal reste conditionnel (« tient si ≤ seuil »).
+        me_lethal_guaranteed = (me_counter_threshold is not None
+                                and opp_counter_worst is not None
+                                and me_counter_threshold >= opp_counter_worst)
 
         # --- Probabilité de lethal (mode probabiliste) ---
         # Intègre le risque de trigger : chaque vie adverse retournée peut révéler un trigger
@@ -780,6 +792,10 @@ class LiveEngine:
             "opp_life": opp_life,
             "opp_blockers": opp_blockers,
             "opp_counter_est": opp_counter_est,
+            # Modèle pire-cas (produit) : counter adverse maximal (main × 2K) + lethal garanti.
+            "opp_counter_worst": opp_counter_worst,
+            "opp_hand_count": opp_hand_count,
+            "me_lethal_guaranteed": me_lethal_guaranteed,
             # --- Nouveaux champs : solveur + probabilité + confiance ---
             "me_lethal_prob": me_lethal_prob,
             "me_counter_threshold": me_counter_threshold,

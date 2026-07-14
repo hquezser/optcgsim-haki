@@ -1475,3 +1475,55 @@ def test_state_payload_exposes_opp_known_hand(tmp_path, monkeypatch):
     s.feed_line(_REVEAL.format(name="Uta", cid="OP09-002"))
     payload = srv._state_payload()
     assert payload["opp_known_hand"] == [{"card_id": "OP09-002", "name": "Uta", "count": 1}]
+
+
+# ---------------------------------------------------------------------------
+# Modèle de counter « pire cas 2K » : lethal garanti vs conditionnel (décision produit).
+# ---------------------------------------------------------------------------
+
+def _lethal_setup(tmp_path, opp_hand_count):
+    """Board écrasant (leader 5000 + 3× BIG 10000) vs opp leader 5000, vie 1, 0 blocker.
+    `opp_hand_count` fixe le pire cas de counter (main × 2000)."""
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    _seed_lethal_cards(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    st = _live_match(srv, me_leader="LME", opp_leader="LOPP")
+    st.opp.life = 1
+    st.me.life = 5
+    st.me.board_ids = ["BIG", "BIG", "BIG"]
+    st.me.hand_ids = []
+    st.me.hand_count_known = True
+    st.opp.board_ids = []
+    st.me.don_on_field = 10  # de quoi payer un gros plan
+    # Compte de main adverse (approximatif RZ1) -> pire cas.
+    st.opp.hand_count_known = False
+    st.opp.hand_count_rz1 = opp_hand_count
+    return srv
+
+
+def test_lethal_worst_case_guaranteed_when_opp_hand_empty(tmp_path):
+    """Main adverse vide -> pire cas 0 -> lethal GARANTI (tient même contre tout counter possible)."""
+    srv = _lethal_setup(tmp_path, opp_hand_count=0)
+    l = srv._state_payload()["lethal"]
+    assert l["opp_counter_worst"] == 0
+    assert l["me_counter_threshold"] is not None
+    assert l["me_lethal_guaranteed"] is True
+
+
+def test_lethal_worst_case_not_guaranteed_with_big_hand(tmp_path):
+    """Grande main adverse -> pire cas élevé (main × 2K) ; si le seuil ne le couvre pas,
+    le lethal n'est PAS garanti (reste conditionnel)."""
+    srv = _lethal_setup(tmp_path, opp_hand_count=8)  # pire cas = 16000
+    l = srv._state_payload()["lethal"]
+    assert l["opp_counter_worst"] == 16000
+    # garanti seulement si le seuil absolu >= 16000.
+    assert l["me_lethal_guaranteed"] == (l["me_counter_threshold"] >= 16000)
+
+
+def test_lethal_worst_case_none_when_hand_unknown(tmp_path):
+    """Compte de main adverse inconnu -> pire cas None -> jamais 'garanti' (conservateur)."""
+    srv = _lethal_setup(tmp_path, opp_hand_count=None)
+    l = srv._state_payload()["lethal"]
+    assert l["opp_counter_worst"] is None
+    assert l["me_lethal_guaranteed"] is False

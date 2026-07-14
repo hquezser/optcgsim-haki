@@ -43,25 +43,40 @@ export function LethalPanel({
     );
   } else if (lethal.me_can_lethal) {
     const lvl = mc?.level ?? "medium";
-    const head = lvl === "high" ? "🎯 Lethal quasi-certain ce tour"
-      : lvl === "medium" ? "🎯 Lethal probable ce tour"
-      : "🎯 Lethal possible — à confirmer";
-    const cls = lvl === "low"
-      ? "border-slate-700 from-slate-900 to-slate-950 text-slate-300"
-      : "border-green-800 from-green-950 to-slate-950 text-green-400";
     const prob = lethal.me_lethal_prob;
+    const k = (v: number) => (v >= 1000 ? `${v / 1000}k` : `${v}`);
+    // Modèle « pire cas 2K » : l'annonce fiable est le lethal GARANTI (tient même si chaque
+    // carte en main adverse est un counter 2K). Sinon, fait conditionnel exact : le seuil.
+    const guaranteed = lethal.me_lethal_guaranteed;
+    const worst = lethal.opp_counter_worst;
+    // DON!! ouverts adverses -> events de défense possibles (peuvent dépasser le pire cas 2K).
+    const oppDon = lethal.opp_don_available;
+    const head = guaranteed ? "🎯 Lethal GARANTI ce tour" : "🎯 Lethal possible";
+    const cls = guaranteed
+      ? "border-green-800 from-green-950 to-slate-950 text-green-400"
+      : "border-amber-800 from-amber-950 to-slate-950 text-amber-300";
     banner = (
       <div className={`mb-2 rounded border bg-gradient-to-r p-2 text-center text-sm font-semibold ${cls}`}>
         {head}
-        {lethal.me_counter_threshold != null && (
-          <span className="font-normal"> — tient si counters adverses ≤ {lethal.me_counter_threshold.toLocaleString()}</span>
+        {guaranteed && worst != null && (
+          <span className="font-normal"> — tient même à {k(worst)} de counter adverse</span>
         )}
-        {/* Le % de lethal (trigger inclus) est probabiliste : réservé au dashboard. En
-            compact (overlay) on ne garde que le fait conditionnel exact : le seuil. */}
+        {!guaranteed && lethal.me_counter_threshold != null && (
+          <span className="font-normal">
+            {" "}— tient si counters adverses ≤ {k(lethal.me_counter_threshold)}
+            {worst != null && <span className="text-slate-400"> (pire cas {k(worst)})</span>}
+          </span>
+        )}
+        {oppDon > 0 && (
+          <span className="ml-1 block text-xs font-normal text-amber-400">
+            ⚠ {oppDon} DON ouverts → event de défense possible
+          </span>
+        )}
+        {/* Le % de lethal (trigger inclus) est probabiliste : réservé au dashboard. */}
         {prob != null && prob < 100 && !compact && (
           <span className="ml-1 font-normal text-amber-400">· {prob}% (trigger {lethal.trigger_risk_pct ?? "?"}%)</span>
         )}
-        {mc && <ConfChip level={lvl} />}
+        {mc && !compact && <ConfChip level={lvl} />}
       </div>
     );
   }
