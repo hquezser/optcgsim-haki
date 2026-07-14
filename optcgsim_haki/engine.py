@@ -809,12 +809,24 @@ class LiveEngine:
     def _my_deck_leader(self) -> str | None:
         """Leader EXACT de mon deck, via la ligne 'Playing with deck: <name>' du Player.log
         (le fichier <app_support>/<name>.txt est ma decklist)."""
+        me = self.state.me
+        seen = (set(me.hand_ids) | set(me.board_ids) | set(me.trash_ids)) if me else set()
+        d = self._logged_named_deck(seen)
+        return d.leader if d else None
+
+    def _logged_named_deck(self, my_seen: set[str]):
+        """Deck nommé désigné par 'Playing with deck', SI cohérent avec mes cartes vues.
+
+        La ligne peut décrire une sélection PRÉCÉDENTE (le log survit entre parties —
+        constaté en Solo vs Self : deck Sanji loggé, partie Bonney/Ace). On ne fait foi
+        que si aucune carte vue de mon camp ne contredit la decklist."""
         name = self.state.my_deck_name
         if not name:
             return None
         for d in self._named_decks():
             if d.name == name:
-                return d.leader
+                extra = {c for c in my_seen if c and c != d.leader} - d.cards
+                return d if not extra else None
         return None
 
     def _observed_opp_leader(self, me_leader: str | None) -> str | None:
@@ -841,10 +853,11 @@ class LiveEngine:
         from collections import Counter
         hand = list(me.hand_ids) if me.hand_count_known else []
         seen = Counter(hand) + Counter(me.board_ids) + Counter(me.trash_ids)
-        # Ma decklist LOGGÉE ("Playing with deck") prime : identité exacte, fiable dès T0.
-        logged = self.state.my_deck_name
-        if logged and any(d.name == logged for d in self._named_decks()):
-            name = logged
+        # Ma decklist LOGGÉE ("Playing with deck") prime : identité exacte, fiable dès T0 —
+        # sous garde de cohérence (la ligne peut décrire une sélection précédente).
+        logged_deck = self._logged_named_deck(set(seen))
+        if logged_deck is not None:
+            name, logged = logged_deck.name, logged_deck.name
         else:
             name = match_deck(set(seen) | {leader}, leader, self._named_decks(), full=False)
             logged = None

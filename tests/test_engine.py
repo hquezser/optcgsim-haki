@@ -1359,3 +1359,69 @@ def test_defense_payload_carries_counter_to_hold(tmp_path):
     d = p["defense"]
     # Attaques adverses : leader 5000 (1000 requis) + BIG 10000 (6000 requis) = 7000.
     assert d["counter_to_hold"] == 7000
+
+
+# ---------------------------------------------------------------------------
+# Chantier D — complétude Solo vs Self + garde de cohérence du deck loggé.
+# ---------------------------------------------------------------------------
+
+def _solo_state():
+    """État Solo vs Self minimal : 2 joueurs locaux identifiés via mulligan/RZ1."""
+    from optcgsim_haki.live import LiveState
+    s = LiveState()
+    s.feed_line("shuffle deck for ")
+    s.feed_line("shuffle deck for ")
+    s.feed_line("[ReplaySync] RZ1|1|1|OP12-006|0|49|1|0|1|1|0|0|0")
+    s.feed_line("[ReplaySync] RZ1|2|2|PRB02-003|0|49|1|0|1|1|0|0|0")
+    s.feed_line("Hand after Mulligan: [OP12-006]")
+    s.feed_line("Hand after Mulligan: [PRB02-003]")
+    assert s.is_solo
+    return s
+
+
+def test_solo_counter_attributed_to_non_active_player():
+    """En solo, un counter '[] Discard … for Counter N' se joue pendant le tour de
+    l'AUTRE : attribution exacte au joueur non-actif."""
+    s = _solo_state()
+    s.feed_line("start action phase for player (0), curr state is PlayerTurn_Action")  # p1 actif
+    s.feed_line('[] Discard Koby [<mark><link="PRB02-001">PRB02-001</link></mark>] for Counter 1000')
+    p2 = s.players.get("solo_p2")
+    assert p2 is not None and p2.counters_spent_count == 1 and p2.counters_spent_total == 1000
+
+    s.feed_line("start action phase for player (1), curr state is PlayerTurn_Action")  # p2 actif
+    s.feed_line('[] Discard Nami [<mark><link="OP01-016">OP01-016</link></mark>] for Counter 2000')
+    p1 = s.players.get("solo_p1")
+    assert p1 is not None and p1.counters_spent_count == 1 and p1.counters_spent_total == 2000
+
+
+def test_solo_counter_without_active_player_is_ignored():
+    """Sans joueur actif connu, on ne devine pas l'attribution d'un counter."""
+    s = _solo_state()
+    s.feed_line('[] Discard Koby [<mark><link="PRB02-001">PRB02-001</link></mark>] for Counter 1000')
+    for tag in ("solo_p1", "solo_p2"):
+        p = s.players.get(tag)
+        assert p is None or p.counters_spent_count == 0
+
+
+def test_logged_deck_ignored_when_contradicted_by_seen_cards(tmp_path, monkeypatch):
+    """'Playing with deck' peut décrire une sélection PRÉCÉDENTE (constaté en solo) :
+    si une carte vue de mon camp n'est pas dans la decklist, on ne fait plus foi."""
+    monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
+    (tmp_path / "MonDeck.txt").write_text("1xPRB01-001\n4xOP01-013\n")
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    st = srv.state
+    st.feed_line("Playing with deck: MonDeck")
+    st.feed_line("shuffle deck for Foe#2222")
+    st.feed_line("shuffle deck for Me#0000")
+    st.feed_line("[ReplaySync] RZ1|1|1|OP01-013|0|49|1|0|1|1|0|0|0")
+    st.feed_line("Hand before Mulligan: [OP01-013]")
+    # Cohérent -> deck loggé fait foi (leader + odds fiables).
+    assert srv._my_deck_leader() == "PRB01-001"
+    # Une carte vue HORS decklist -> le deck loggé est périmé -> on ne fait plus foi.
+    st.me.hand_ids = ["OP01-013", "ZZ99-999"]
+    assert srv._my_deck_leader() is None
+    payload = srv._state_payload()
+    odds = payload.get("draw_odds")
+    assert odds is None or not odds.get("reliable")

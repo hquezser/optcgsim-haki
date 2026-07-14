@@ -504,6 +504,19 @@ class LiveState:
         main (matching avec _rz_hand_ids), puis les Board/Trash/Life qui suivent dans le même
         groupe sont attribués au même joueur.
         """
+        # Counter défaussé ("[] Discard ... for Counter N") : un counter ne se joue que
+        # pendant le tour ADVERSE -> attribution exacte au joueur NON-actif. Sans joueur
+        # actif connu, on ne devine pas.
+        mdc = L.RE_DISCARD_COUNTER.match(rest)
+        if mdc:
+            if self._solo_active_pnum in (1, 2):
+                other = 2 if self._solo_active_pnum == 1 else 1
+                tag = self._player_to_tag.setdefault(other, f"solo_p{other}")
+                p = self._player(tag)
+                p.counters_spent_count += 1
+                if mdc.group("val"):
+                    p.counters_spent_total += int(mdc.group("val"))
+            return
         msh = L.RE_HAND.match(rest)
         if msh:
             hand_ids = L.parse_id_list(msh.group("ids"))
