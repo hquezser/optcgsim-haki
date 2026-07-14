@@ -1,6 +1,6 @@
 """Test de l'extraction des noms de cartes depuis un asset Unity synthétique."""
 
-from optcgsim_tracker.cardnames import extract_card_names, load_card_names
+from optcgsim_haki.cardnames import extract_card_names, load_card_names
 
 
 def _make_asset(tmp_path, entries):

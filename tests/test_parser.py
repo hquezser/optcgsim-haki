@@ -1,9 +1,9 @@
 """Tests du parser de match sur la fixture anonymisée."""
 
-from optcgsim_tracker.live import LiveState
-from optcgsim_tracker.parser.match import parse_log
-from optcgsim_tracker.parser.my_matches import parse_my_matches, detect_local_player
-from optcgsim_tracker.watcher import replay_current_match
+from optcgsim_haki.live import LiveState
+from optcgsim_haki.parser.match import parse_log
+from optcgsim_haki.parser.my_matches import parse_my_matches, detect_local_player
+from optcgsim_haki.watcher import replay_current_match
 
 
 def test_live_new_match_reset_is_gameplay_gated():
@@ -84,7 +84,7 @@ def test_replay_current_match_captures_opp_shuffling_first(tmp_path):
 
 def test_learn_leader_life_from_logs(tmp_path):
     """La vie d'un leader absent du .pck est déduite des logs AutoSaved (Leader is + Life)."""
-    from optcgsim_tracker.cardmeta import learn_leader_life_from_logs
+    from optcgsim_haki.cardmeta import learn_leader_life_from_logs
     d = tmp_path / "AutoSaved"
     d.mkdir()
     (d / "g1.log").write_text("\n".join([
@@ -206,7 +206,7 @@ def test_don_attach_events_are_distinct_type(autosaved_log):
 
 def test_rz1_don_deck_remaining_helper():
     """don_deck_remaining lit l'action 4 (placement DON-deck) ; ignore 5 (attach) et 9 (power)."""
-    from optcgsim_tracker.parser import rz1 as RZ
+    from optcgsim_haki.parser import rz1 as RZ
     place = RZ.parse_rz1_line("RZ1|11|1|Don|4|9|5|0|1|1|0|0|0")
     attach = RZ.parse_rz1_line("RZ1|12|1|Don|5|0|5|0|1|1|1|0|0")
     pmod = RZ.parse_rz1_line("RZ1|44|1|Don|9|9900|5|0|1|1|1|0|0")

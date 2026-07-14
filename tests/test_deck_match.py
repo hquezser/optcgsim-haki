@@ -1,6 +1,6 @@
 """Tests du rattachement match -> deck nommé (deck_match)."""
 
-from optcgsim_tracker.deck_match import NamedDeck, match_deck, match_deck_strict
+from optcgsim_haki.deck_match import NamedDeck, match_deck, match_deck_strict
 
 # Deux decks du même leader, partageant un tronc commun mais avec une techno distincte.
 _AGGRO = NamedDeck("Sanji Aggro", "PRB01-001",

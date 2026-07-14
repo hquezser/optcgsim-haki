@@ -21,9 +21,9 @@ from __future__ import annotations
 import argparse
 import sys
 
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.parser.match import parse_log
-from optcgsim_tracker.sources import Sources
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.parser.match import parse_log
+from optcgsim_haki.sources import Sources
 
 
 def main() -> int:

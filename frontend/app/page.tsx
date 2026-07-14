@@ -63,7 +63,7 @@ export default function LiveDashboard() {
     <div className="mx-auto max-w-7xl px-4 py-4">
       {/* Header */}
       <header className="mb-4 flex items-center gap-3">
-        <h1 className="text-xl font-bold">OPTCGSim Tracker — Live</h1>
+        <h1 className="text-xl font-bold">OPTCGSim Haki — Live</h1>
         <span className={`rounded-full px-3 py-0.5 text-sm ${statusCls}`}>{status}</span>
         {data?.exact_state && (
           <span
@@ -119,7 +119,7 @@ export default function LiveDashboard() {
 
       {!connected && (
         <div className="rounded border border-amber-700 bg-amber-950/30 p-3 text-amber-400 text-sm">
-          Serveur API injoignable. Lance le backend : <code className="bg-slate-800 px-1 rounded">optcg-tracker dashboard</code>
+          Serveur API injoignable. Lance le backend : <code className="bg-slate-800 px-1 rounded">optcgsim-haki dashboard</code>
         </div>
       )}
 

@@ -2,10 +2,10 @@
 
 from datetime import datetime
 
-from optcgsim_tracker.analytics import Analytics, sparkline
-from optcgsim_tracker.archetype import ArchetypeModel
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.model import MatchRecord, PlayerInfo
+from optcgsim_haki.analytics import Analytics, sparkline
+from optcgsim_haki.archetype import ArchetypeModel
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.model import MatchRecord, PlayerInfo
 
 
 def _match(mid, result, my_leader, opp_leader, played_at, mode="ranked", rating=None):
@@ -193,7 +193,7 @@ def test_filter_by_mode_and_format(tmp_path):
         assert total == 1
 
         # by_meta avec filtre format=Extra : 1 match
-        from optcgsim_tracker.meta import Meta
+        from optcgsim_haki.meta import Meta
         tl = [Meta("OP10", "OP10", "2026-01-01")]
         metas = a.by_meta(tl, fmt="Extra Regulation")
         assert sum(r.total for r in metas) == 1
@@ -666,7 +666,7 @@ def _seed_value_db(st):
     Match 1 (win) : Alice déploie C1 (cost 3, power 5000) qui détruit C_opp (cost 5).
     Match 2 (loss) : Alice déploie C2 (cost 8, power 8000) sans effet.
     """
-    from optcgsim_tracker.model import MatchRecord, PlayerInfo
+    from optcgsim_haki.model import MatchRecord, PlayerInfo
     matches = [
         ("v1", "win", "L1", "E1", "2026-07-01T10:00:00"),
         ("v2", "loss", "L1", "E1", "2026-07-02T10:00:00"),

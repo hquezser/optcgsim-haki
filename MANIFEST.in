@@ -2,4 +2,4 @@ include LICENSE
 include README.md
 
 # Frontend statique pré-buildé (servi par FastAPI)
-recursive-include optcgsim_tracker/static *
+recursive-include optcgsim_haki/static *

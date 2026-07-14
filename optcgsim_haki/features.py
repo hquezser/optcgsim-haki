@@ -1,4 +1,4 @@
-"""Système de feature flags pour OPTCGSim Tracker.
+"""Système de feature flags pour OPTCGSim Haki.
 
 v1 : par défaut on n'expose QUE le fiable. Les features "approximatives" (inférées
 du log) sont OFF ; activables individuellement via ``OPTCG_FEATURE_<NOM>=1``, ou

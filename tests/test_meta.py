@@ -1,6 +1,6 @@
 """Tests du rattachement d'une partie à son meta."""
 
-from optcgsim_tracker.meta import Meta, card_meta, meta_of, resolve_meta
+from optcgsim_haki.meta import Meta, card_meta, meta_of, resolve_meta
 
 TIMELINE = [
     Meta("OP14", "OP14", "2026-01-16"),

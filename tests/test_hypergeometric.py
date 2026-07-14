@@ -2,7 +2,7 @@
 
 import pytest
 
-from optcgsim_tracker.hypergeometric import (
+from optcgsim_haki.hypergeometric import (
     p_at_least,
     p_at_least_one,
     p_exactly,

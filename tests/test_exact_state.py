@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from optcgsim_tracker.exact_state import ExactStateSource, default_exact_state_path
+from optcgsim_haki.exact_state import ExactStateSource, default_exact_state_path
 
 
 def _sample_raw(me_idx: int = 0) -> dict:
@@ -189,7 +189,7 @@ def test_exact_state_reset(tmp_path):
 
 def test_exact_state_default_path():
     """default_exact_state_path retourne le chemin dans App Support."""
-    from optcgsim_tracker.paths import GamePaths
+    from optcgsim_haki.paths import GamePaths
     p = Path("/tmp/fake_app_support")
     result = default_exact_state_path(p)
     assert result == p / "live_exact_state.json"

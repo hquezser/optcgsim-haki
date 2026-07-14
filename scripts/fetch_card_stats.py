@@ -2,7 +2,7 @@
 
 Usage   : python scripts/fetch_card_stats.py
 Requiert: pip install requests
-Génère  : optcgsim_tracker/data/card_stats.json
+Génère  : optcgsim_haki/data/card_stats.json
 
 À relancer à chaque nouveau set (~tous les 2 mois). Commiter le résultat.
 """
@@ -22,7 +22,7 @@ except ImportError:
     sys.exit(1)
 
 BASE = "https://optcgapi.com/api"
-OUT = pathlib.Path(__file__).parent.parent / "optcgsim_tracker" / "data" / "card_stats.json"
+OUT = pathlib.Path(__file__).parent.parent / "optcgsim_haki" / "data" / "card_stats.json"
 
 # Endpoints bulk (une requête chacun).
 BULK_ENDPOINTS = ["allSetCards", "allSTCards", "allPromoCards", "allDonCards"]
@@ -127,7 +127,7 @@ def main() -> None:
     payload = {"generated": str(date.today()), "cards": all_cards}
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     print(f"\n✓ Écrit dans {OUT} ({OUT.stat().st_size // 1024} Ko)")
-    print("  → git add optcgsim_tracker/data/card_stats.json && git commit -m 'card_stats: update'")
+    print("  → git add optcgsim_haki/data/card_stats.json && git commit -m 'card_stats: update'")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from optcgsim_tracker.ingest import _epoch, _MATCH_WINDOW_S
+from optcgsim_haki.ingest import _epoch, _MATCH_WINDOW_S
 
 
 def test_epoch_naive_interpreted_as_utc():

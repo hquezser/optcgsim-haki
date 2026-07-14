@@ -1,6 +1,6 @@
 """Tests de la détection de format avec des banlists synthétiques injectées."""
 
-from optcgsim_tracker.formats import FormatDetector
+from optcgsim_haki.formats import FormatDetector
 
 # Deux formats compétitifs bannissant les sets ST31, + un ban de carte ; pas de format laxiste.
 FORMATS = [

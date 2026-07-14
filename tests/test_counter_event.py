@@ -2,9 +2,9 @@
 
 from datetime import datetime
 
-from optcgsim_tracker.analytics import Analytics
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.parser.match import parse_log
+from optcgsim_haki.analytics import Analytics
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.parser.match import parse_log
 
 _REF = '[<mark><link="{0}">{0}</link></mark>]'
 

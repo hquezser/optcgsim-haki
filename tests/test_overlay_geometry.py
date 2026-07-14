@@ -1,6 +1,6 @@
 """Tests de la géométrie de l'overlay (pur, sans natif)."""
 
-from optcgsim_tracker.overlay.geometry import (
+from optcgsim_haki.overlay.geometry import (
     Rect,
     WindowFollower,
     compute_overlay_frame,

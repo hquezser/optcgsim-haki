@@ -351,7 +351,7 @@ def _compute_lethal(
 # ---------------------------------------------------------------------------
 
 class LiveEngine:
-    """Logique métier temps réel pour OPTCGSim Tracker.
+    """Logique métier temps réel pour OPTCGSim Haki.
 
     Gère :
       - L'état live (LiveState) + thread de tailing Player.log

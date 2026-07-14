@@ -1,4 +1,4 @@
-"""Serveur FastAPI pour OPTCGSim Tracker.
+"""Serveur FastAPI pour OPTCGSim Haki.
 
 Expose en JSON pur :
   - GET /api/state            → payload live (jeu en cours)
@@ -179,7 +179,7 @@ def _detect_highlights(snapshots: list[dict], events: list[dict], match: dict) -
 
 def create_app(db_path: str = "optcg.db", reveal_all: bool = False) -> FastAPI:
     """Crée l'application FastAPI. Un seul LiveEngine partagé (thread-safe via lock)."""
-    app = FastAPI(title="OPTCGSim Tracker API", version="0.2.0")
+    app = FastAPI(title="OPTCGSim Haki API", version="0.2.0")
 
     # CORS : le frontend Next.js tourne sur un port différent en dev (5173/3000).
     # allow_credentials=False : l'API ne lit jamais de cookies/auth (lecture publique locale),
@@ -589,8 +589,8 @@ def create_app(db_path: str = "optcg.db", reveal_all: bool = False) -> FastAPI:
 
     # --- Frontend statique (build Next.js output: export) ---
     # En prod : FastAPI sert le build statique sur le même port que l'API.
-    # Résolution via optcgsim_tracker.resources (supporte pip install ET mode dev).
-    from optcgsim_tracker.resources import static_dir
+    # Résolution via optcgsim_haki.resources (supporte pip install ET mode dev).
+    from optcgsim_haki.resources import static_dir
     frontend_out = static_dir()
     if frontend_out:
         # Les assets _next/ sont servis directement.
@@ -748,8 +748,8 @@ def run_api(db_path: str = "optcg.db", port: int = 8765, reveal_all: bool = Fals
     t = threading.Thread(target=live._tail_loop, daemon=True)
     t.start()
 
-    from optcgsim_tracker.resources import has_frontend
-    print(f"OPTCGSim Tracker API → http://127.0.0.1:{port}/api/state")
+    from optcgsim_haki.resources import has_frontend
+    print(f"OPTCGSim Haki API → http://127.0.0.1:{port}/api/state")
     if has_frontend():
         print(f"Dashboard             → http://127.0.0.1:{port}/")
     else:

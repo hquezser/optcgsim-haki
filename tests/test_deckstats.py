@@ -1,7 +1,7 @@
 """Tests des stats de deck (courbe, counters, couleurs, types)."""
 
-from optcgsim_tracker.cardmeta import CardMeta
-from optcgsim_tracker.deckstats import Deck, compute_stats, opening_odds, parse_deck_file
+from optcgsim_haki.cardmeta import CardMeta
+from optcgsim_haki.deckstats import Deck, compute_stats, opening_odds, parse_deck_file
 
 
 META = {

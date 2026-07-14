@@ -81,7 +81,7 @@ function StatsPageInner() {
 
       {loading && <p className="text-slate-500">Chargement…</p>}
       {!loading && !data && (
-        <p className="text-amber-400">Serveur API injoignable. Lance <code className="bg-slate-800 px-1 rounded">optcg-tracker dashboard</code></p>
+        <p className="text-amber-400">Serveur API injoignable. Lance <code className="bg-slate-800 px-1 rounded">optcgsim-haki dashboard</code></p>
       )}
       {!loading && data && (
         <StatsContent

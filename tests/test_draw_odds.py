@@ -1,7 +1,7 @@
 """Tests du calcul d'odds de pioche live (_build_draw_odds)."""
 
-from optcgsim_tracker.cardmeta import CardMeta
-from optcgsim_tracker.engine import _build_draw_odds
+from optcgsim_haki.cardmeta import CardMeta
+from optcgsim_haki.engine import _build_draw_odds
 
 
 META = {

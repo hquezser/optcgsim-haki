@@ -31,7 +31,7 @@ frontend/.next/
 frontend/node_modules/
 
 # Frontend statique copié dans le package (généré par scripts/build_frontend.sh)
-optcgsim_tracker/static/
+optcgsim_haki/static/
 
 # OS
 .DS_Store

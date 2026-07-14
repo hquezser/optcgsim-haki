@@ -1,4 +1,4 @@
-# OPTCGSim Tracker — Guide de développement
+# OPTCGSim Haki — Guide de développement
 
 ## Build & Test
 
@@ -16,13 +16,13 @@ python3 -m build
 pip install -e .
 
 # Installer depuis le wheel
-pip install dist/optcgsim_tracker-0.1.0-py3-none-any.whl
+pip install dist/optcgsim_haki-0.1.0-py3-none-any.whl
 ```
 
 ## Architecture
 
-- `optcgsim_tracker/` — package Python (backend)
-  - `cli.py` — entry point `optcg-tracker`
+- `optcgsim_haki/` — package Python (backend)
+  - `cli.py` — entry point `optcgsim-haki`
   - `engine.py` — LiveEngine (tail Player.log, payload /state, solveur de lethal)
   - `api/server.py` — serveur FastAPI (API + frontend statique)
   - `resources.py` — résolution des ressources embarquées (importlib.resources)
@@ -39,13 +39,13 @@ pip install dist/optcgsim_tracker-0.1.0-py3-none-any.whl
    ```bash
    ./scripts/build_frontend.sh
    ```
-   Ce script lance `npm run build` puis copie `frontend/out/` vers `optcgsim_tracker/static/`.
+   Ce script lance `npm run build` puis copie `frontend/out/` vers `optcgsim_haki/static/`.
 
 2. **Build le package** :
    ```bash
    python3 -m build
    ```
-   Produit `dist/optcgsim_tracker-0.1.0-py3-none-any.whl` + `dist/optcgsim_tracker-0.1.0.tar.gz`.
+   Produit `dist/optcgsim_haki-0.1.0-py3-none-any.whl` + `dist/optcgsim_haki-0.1.0.tar.gz`.
 
 3. **Publier** :
    ```bash
@@ -54,18 +54,18 @@ pip install dist/optcgsim_tracker-0.1.0-py3-none-any.whl
 
 4. **Installation utilisateur** :
    ```bash
-   pip install optcgsim-tracker
+   pip install optcgsim-haki
    # ou
-   pipx install optcgsim-tracker
+   pipx install optcgsim-haki
    # ou
-   uv tool install optcgsim-tracker
+   uv tool install optcgsim-haki
    ```
 
 ### Résolution des ressources
 
-Le module `optcgsim_tracker/resources.py` résout le chemin du frontend statique :
+Le module `optcgsim_haki/resources.py` résout le chemin du frontend statique :
 
-1. **Priorité 1** : `optcgsim_tracker/static/` (dans le package — après `pip install`)
+1. **Priorité 1** : `optcgsim_haki/static/` (dans le package — après `pip install`)
 2. **Priorité 2** : `frontend/out/` (racine du repo — mode dev)
 
 Utilise `importlib.resources` pour fonctionner dans tous les cas (editable install,
@@ -73,17 +73,17 @@ pip install, wheel, mode dev depuis le repo).
 
 ### Fichiers embarqués dans le wheel
 
-- `optcgsim_tracker/static/**` — frontend Next.js pré-buildé (via `package-data` dans `pyproject.toml`)
+- `optcgsim_haki/static/**` — frontend Next.js pré-buildé (via `package-data` dans `pyproject.toml`)
 - `LICENSE` — licence MIT (via `MANIFEST.in`)
 
 ### Fichiers NON embarqués (générés au runtime)
 
-- `optcg.db` — base SQLite utilisateur (créée par `optcg-tracker backfill`)
+- `optcg.db` — base SQLite utilisateur (créée par `optcgsim-haki backfill`)
 - `*.cardmeta.json` / `*.cardnames.json` — caches générés depuis `resources.assets` du jeu
 
 ### .gitignore
 
-`optcgsim_tracker/static/` et `frontend/out/` sont ignorés : ce sont des artefacts
+`optcgsim_haki/static/` et `frontend/out/` sont ignorés : ce sont des artefacts
 de build, régénérés par `scripts/build_frontend.sh`. Ne pas committer.
 
 ## Solveur de Lethal

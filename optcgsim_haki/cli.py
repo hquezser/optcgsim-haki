@@ -324,7 +324,7 @@ def cmd_meta(args) -> int:
             _print_rows(f"Leaders en {args.meta} ({args.mode})", rows)
         else:                               # vue d'ensemble par meta
             _print_rows(f"Winrate par meta ({args.mode})", a.by_meta(timeline, args.mode))
-            print("\n→ détail d'un meta : optcg-tracker meta \"<label>\"")
+            print("\n→ détail d'un meta : optcgsim-haki meta \"<label>\"")
     return 0
 
 
@@ -370,7 +370,7 @@ def cmd_overlay(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="optcg-tracker", description="Tracker de stats OPTCGSim.")
+    p = argparse.ArgumentParser(prog="optcgsim-haki", description="Tracker de stats OPTCGSim.")
     p.add_argument("--db", default=DEFAULT_DB, help="chemin de la base SQLite")
     sub = p.add_subparsers(dest="cmd", required=True)
 

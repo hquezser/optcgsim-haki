@@ -7,10 +7,10 @@ import urllib.request
 import pytest
 
 from .conftest import FIXTURES
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.engine import LiveEngine, _forecast_next_plays, _compute_lethal
-from optcgsim_tracker.engine import _solve_lethal, _don_cost
-from optcgsim_tracker.model import MatchRecord, PlayerInfo
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.engine import LiveEngine, _forecast_next_plays, _compute_lethal
+from optcgsim_haki.engine import _solve_lethal, _don_cost
+from optcgsim_haki.model import MatchRecord, PlayerInfo
 
 
 # Ces tests valident la logique interne du chemin live/log (lethal, archétype,
@@ -242,7 +242,7 @@ def test_lethal_confidence_graded(tmp_path):
 def test_reveal_all_exposes_opp_hand_from_rz1():
     """En live, reveal_all expose la main adverse reconstruite depuis le flux RZ1 (identités
     piochées moins jouées) ; en fair-play elle reste cachée."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     s = LiveState()
     s.feed_line("shuffle deck for Foe#2222")
     s.feed_line("shuffle deck for Me#0000")
@@ -363,7 +363,7 @@ def test_state_payload_opp_hand_count_rz1_plus_damage(tmp_path):
 
 def test_leader_damage_tracked_from_hit_lines():
     """Les lignes globales 'hit for N damage' cumulent les dégâts par leader (card_id)."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     s = LiveState()
     s.feed_line('Shanks [<mark><link="OP09-001">OP09-001</link></mark>] hit for 2 damage')
     s.feed_line('Sanji [<mark><link="PRB01-001">PRB01-001</link></mark>] hit for 1 damage')
@@ -778,7 +778,7 @@ def test_solve_lethal_optimal_allocation():
 
 def test_modifier_engine_get_current_power_add():
     """get_current_power : ADD modificateur ajoute à la power de base."""
-    from optcgsim_tracker.live import LiveState, LivePlayer, Modifier
+    from optcgsim_haki.live import LiveState, LivePlayer, Modifier
     st = LiveState()
     p = LivePlayer(tag="Alice", side="me", leader="PRB01-001")
     # Buff +2000 sur le leader
@@ -790,7 +790,7 @@ def test_modifier_engine_get_current_power_add():
 
 def test_modifier_engine_get_current_power_set_base():
     """get_current_power : SET_BASE remplace la power de base."""
-    from optcgsim_tracker.live import LiveState, LivePlayer, Modifier
+    from optcgsim_haki.live import LiveState, LivePlayer, Modifier
     st = LiveState()
     p = LivePlayer(tag="Alice", side="me", leader="L1")
     # SET_BASE = 7000
@@ -802,7 +802,7 @@ def test_modifier_engine_get_current_power_set_base():
 
 def test_modifier_engine_set_base_plus_add():
     """SET_BASE écrase la base, puis ADD s'ajoute : (7000) + 2000 = 9000."""
-    from optcgsim_tracker.live import LiveState, LivePlayer, Modifier
+    from optcgsim_haki.live import LiveState, LivePlayer, Modifier
     st = LiveState()
     p = LivePlayer(tag="Alice", side="me", leader="L1")
     st._apply_modifier(p, "L1", Modifier(
@@ -816,7 +816,7 @@ def test_modifier_engine_set_base_plus_add():
 
 def test_modifier_engine_set_base_last_wins():
     """Si plusieurs SET_BASE, le dernier écrase les précédents."""
-    from optcgsim_tracker.live import LiveState, LivePlayer, Modifier
+    from optcgsim_haki.live import LiveState, LivePlayer, Modifier
     st = LiveState()
     p = LivePlayer(tag="Alice", side="me", leader="L1")
     st._apply_modifier(p, "L1", Modifier(
@@ -830,7 +830,7 @@ def test_modifier_engine_set_base_last_wins():
 
 def test_modifier_engine_gc_end_of_current_turn():
     """GC : END_OF_CURRENT_TURN expire à la fin du tour du camp qui a appliqué."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     p = st._player("Alice#0001")
@@ -849,7 +849,7 @@ def test_modifier_engine_gc_end_of_current_turn():
 
 def test_modifier_engine_gc_end_of_next_turn():
     """GC : END_OF_NEXT_TURN expire à la fin du tour adverse, pas avant."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     p = st._player("Alice#0001")
@@ -870,7 +870,7 @@ def test_modifier_engine_gc_end_of_next_turn():
 
 def test_modifier_engine_gc_permanent():
     """GC : PERMANENT ne expire jamais."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     p = st._player("Alice#0001")
@@ -888,7 +888,7 @@ def test_modifier_engine_gc_permanent():
 
 def test_modifier_engine_parse_expiry():
     """_parse_expiry interprète correctement les textes d'expiry."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     assert LiveState._parse_expiry("opponent's next turn end", "me") == "END_OF_NEXT_TURN"
     # « your/my next turn » = propre prochain tour de l'applicateur (distinct de l'adverse).
     assert LiveState._parse_expiry("your next turn end", "me") == "END_OF_OWN_NEXT_TURN"
@@ -901,7 +901,7 @@ def test_modifier_engine_parse_expiry():
 
 def test_modifier_engine_own_next_turn_gc():
     """END_OF_OWN_NEXT_TURN survit au tour adverse et expire au propre tour suivant."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     st.opp_tag = "Bob#0002"
@@ -929,7 +929,7 @@ def test_modifier_engine_large_grant_is_add():
     Régression de l'ancien seuil « >= 5000 -> SET_BASE » qui écrasait la base avec le delta
     (un +6000 ponctuel devenait base=6000 au lieu de 5000+6000=11000) -> lethal manqué.
     """
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     st = LiveState()
     st.me_tag = "Alice#0001"; st.opp_tag = "Bob#0002"
     me = st._player("Alice#0001"); me.side = "me"; me.leader = "OP01-001"
@@ -947,7 +947,7 @@ def test_modifier_engine_large_grant_is_add():
 
 def test_modifier_engine_feed_line_grant():
     """feed_line capture un buff 'Grant ... 2000 until opponent's next turn end'."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     st = LiveState()
     st.me_tag = "Alice#0001"
     st.opp_tag = "Bob#0002"
@@ -976,7 +976,7 @@ def test_modifier_engine_feed_line_grant():
 
 def test_modifier_engine_feed_line_end_turn_gc():
     """feed_line déclenche la GC sur 'End Turn' et fait expirer les buffs."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     st.opp_tag = "Bob#0002"
@@ -999,7 +999,7 @@ def test_modifier_engine_feed_line_end_turn_gc():
 
 def test_modifier_engine_fixture_log():
     """Le log de fixture capture le buff Zeff -> Sanji (+2000)."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     st = LiveState()
     with open(FIXTURES / "match_autosaved.log") as f:
         for line in f:
@@ -1015,7 +1015,7 @@ def test_modifier_engine_fixture_log():
 
 def test_modifier_engine_to_dict_exports_modifiers():
     """to_dict exporte les modificateurs dans le payload API."""
-    from optcgsim_tracker.live import LiveState, Modifier
+    from optcgsim_haki.live import LiveState, Modifier
     st = LiveState()
     st.me_tag = "Alice#0001"
     me = st._player("Alice#0001")
@@ -1036,7 +1036,7 @@ def test_modifier_engine_to_dict_exports_modifiers():
 
 def test_solo_vs_self_detects_mode_and_assigns_sides():
     """En Solo vs Self, le tag shuffle est vide -> is_solo=True, tags synthétiques."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     st = LiveState()
     st.feed_line("shuffle deck for ")
     assert st.is_solo
@@ -1048,7 +1048,7 @@ def test_solo_vs_self_detects_mode_and_assigns_sides():
 def test_solo_vs_self_correlates_hands_and_snapshots():
     """Solo vs Self : "Hand after Mulligan" + snapshots [] sont attribués aux bons joueurs
     via corrélation avec les pioches RZ1."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     fixture = FIXTURES / "solo_vs_self.log"
     st = LiveState()
     for line in fixture.read_text().splitlines():
@@ -1091,7 +1091,7 @@ def test_solo_vs_self_correlates_hands_and_snapshots():
 
 def test_solo_vs_self_to_dict_exposes_both_hands():
     """En Solo vs Self, les deux mains sont locales -> exposées même sans reveal_all."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     fixture = FIXTURES / "solo_vs_self.log"
     st = LiveState()
     for line in fixture.read_text().splitlines():
@@ -1106,7 +1106,7 @@ def test_solo_vs_self_to_dict_exposes_both_hands():
 
 def test_solo_vs_self_new_match_reset():
     """Un nouveau shuffle après gameplay déclenche un reset, même en Solo vs Self."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     st = LiveState()
     st.feed_line("shuffle deck for ")
     st.feed_line("start action phase for player (0), curr state is PlayerTurn_Action")
@@ -1121,7 +1121,7 @@ def test_solo_vs_self_new_match_reset():
 def test_counters_spent_tracked_per_player():
     """"Discard ... for Counter N" est un événement public : comptage exact par joueur
     (nombre + somme des valeurs), exposé dans to_dict."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     s = LiveState()
     s.feed_line("shuffle deck for Foe#2222")
     s.feed_line("shuffle deck for Me#0000")
@@ -1140,7 +1140,7 @@ def test_counters_spent_tracked_per_player():
 
 def test_counters_spent_not_confused_with_board_removal():
     """Un counter défaussé ne doit toujours PAS être compté comme retrait de board."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     s = LiveState()
     s.feed_line("shuffle deck for Foe#2222")
     s.feed_line("shuffle deck for Me#0000")
@@ -1157,7 +1157,7 @@ def test_counters_spent_not_confused_with_board_removal():
 def test_playing_with_deck_and_v3_actions_tracked():
     """'Playing with deck' (mon deck exact) et 'Start Using V3 Action' (ids agissants,
     dont les leaders) sont captés ; le deck survit au reset (sélection avant shuffles)."""
-    from optcgsim_tracker.live import LiveState
+    from optcgsim_haki.live import LiveState
     s = LiveState()
     s.feed_line("Playing with deck: 0Sanji 8k OP16")
     s.feed_line('Start Using V3 Action [Portgas D. Ace [<mark><link="OP16-001">OP16-001</link></mark>]]<0>')

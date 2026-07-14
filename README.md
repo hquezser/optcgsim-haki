@@ -1,4 +1,4 @@
-# OPTCGSim Tracker
+# OPTCGSim Haki
 
 Tracker de statistiques **open-source et gratuit** pour [OPTCGSim](https://optcgsim.com/), le
 simulateur du jeu de cartes One Piece. Il analyse les **fichiers de logs locaux** écrits par le jeu
@@ -29,28 +29,28 @@ pip install -e .          # + extras dev : pip install -e ".[dev]"
 ## Utilisation
 
 ```bash
-optcg-tracker backfill            # importe tout l'historique local -> SQLite
-optcg-tracker stats               # winrate par leader / matchup / mode / ordre / mulligan
-optcg-tracker show <match_id>     # déroulé détaillé d'une partie
-optcg-tracker watch               # suivi live en terminal (fair-play par défaut)
-optcg-tracker dashboard           # dashboard web live (board + archétype adverse) sur :8765
-optcg-tracker import-cards <f>    # référentiel externe de noms (JSON {id:name} ou CSV id,name)
+optcgsim-haki backfill            # importe tout l'historique local -> SQLite
+optcgsim-haki stats               # winrate par leader / matchup / mode / ordre / mulligan
+optcgsim-haki show <match_id>     # déroulé détaillé d'une partie
+optcgsim-haki watch               # suivi live en terminal (fair-play par défaut)
+optcgsim-haki dashboard           # dashboard web live (board + archétype adverse) sur :8765
+optcgsim-haki import-cards <f>    # référentiel externe de noms (JSON {id:name} ou CSV id,name)
 
 # Analyses avancées
-optcg-tracker matchups            # matrice de matchups par leader
-optcg-tracker elo                 # courbe de rating dans le temps (sparkline)
-optcg-tracker streaks             # séries win/loss, perf par jour, usage des counters
-optcg-tracker mulligan            # garder vs mulligan + impact des cartes d'ouverture (lift)
-optcg-tracker archetype <leader> [cartes...]   # prédit le deck adverse depuis l'historique
+optcgsim-haki matchups            # matrice de matchups par leader
+optcgsim-haki elo                 # courbe de rating dans le temps (sparkline)
+optcgsim-haki streaks             # séries win/loss, perf par jour, usage des counters
+optcgsim-haki mulligan            # garder vs mulligan + impact des cartes d'ouverture (lift)
+optcgsim-haki archetype <leader> [cartes...]   # prédit le deck adverse depuis l'historique
 
 # Meta (période de jeu) -> Leader
-optcg-tracker meta                # winrate par meta (OP14.5 / OP15 / OP16…)
-optcg-tracker meta OP16           # détail d'un meta : winrate par leader
+optcgsim-haki meta                # winrate par meta (OP14.5 / OP15 / OP16…)
+optcgsim-haki meta OP16           # détail d'un meta : winrate par leader
 
 # Deckbuilding
-optcg-tracker decks               # liste tes decks (leader, counters)
-optcg-tracker deck <nom>          # stats d'un deck : Category / Cost / Counter / Type (traits)
-optcg-tracker watch-decks         # affiche les stats à chaque sauvegarde de deck (live)
+optcgsim-haki decks               # liste tes decks (leader, counters)
+optcgsim-haki deck <nom>          # stats d'un deck : Category / Cost / Counter / Type (traits)
+optcgsim-haki watch-decks         # affiche les stats à chaque sauvegarde de deck (live)
 ```
 
 ## v1 : fiable par défaut, approximatif optionnel
@@ -81,14 +81,14 @@ et réactivables via des variables d'environnement.
 
 ```bash
 # tout réactiver (usage avancé / perso) :
-OPTCG_PROFILE=advanced optcg-tracker dashboard
+OPTCG_PROFILE=advanced optcgsim-haki dashboard
 # ou au cas par cas :
-OPTCG_FEATURE_LIVE_LETHAL=1 OPTCG_FEATURE_VALUE_SCORE=1 optcg-tracker dashboard
+OPTCG_FEATURE_LIVE_LETHAL=1 OPTCG_FEATURE_VALUE_SCORE=1 optcgsim-haki dashboard
 ```
 
 > En **mode état exact** (setup perso avec un mod optionnel, non distribué avec ce dépôt),
 > ces panneaux deviennent *exacts* et sont automatiquement réaffichés (badge « ⚡ état exact »).
-> `optcgsim_tracker/exact_state.py` est le client de ce mode ; il reste inerte sans le mod.
+> `optcgsim_haki/exact_state.py` est le client de ce mode ; il reste inerte sans le mod.
 
 ### Données de cartes
 
@@ -108,7 +108,7 @@ En complément, `import-cards` permet d'injecter un référentiel externe (JSON 
 `id,name`) — il ne complète que les noms manquants, sans écraser ceux du jeu :
 
 ```bash
-optcg-tracker import-cards cartes.csv
+optcgsim-haki import-cards cartes.csv
 ```
 
 ## ⚠️ Fair-play & vie privée
@@ -131,7 +131,7 @@ le jeu ne la voit pas.
 
 ```bash
 pip install -e '.[overlay]'     # pywebview + pyobjc (macOS)
-optcg-tracker overlay           # démarre l'API + l'overlay (cible la fenêtre « OPTCGSim »)
+optcgsim-haki overlay           # démarre l'API + l'overlay (cible la fenêtre « OPTCGSim »)
 # options : --owner <nom>  --opacity 0.9  --no-server (si un dashboard tourne déjà)  --port 8765
 #           --advanced (réactive les panneaux INFÉRÉS : lethal offensif, menaces, odds estimées)
 #           --zone x:6,y:30,w:20,h:50 (position du HUD en % de la fenêtre du jeu)

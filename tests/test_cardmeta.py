@@ -2,7 +2,7 @@
 
 import json
 
-from optcgsim_tracker.cardmeta import _extract_object, iter_pck_objects, parse_pck_cards
+from optcgsim_haki.cardmeta import _extract_object, iter_pck_objects, parse_pck_cards
 
 
 def _obj(**kw) -> str:

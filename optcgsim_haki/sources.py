@@ -1,7 +1,7 @@
 """Localisation et lecture brute des sources de données du jeu.
 
-Couche fine au-dessus de :mod:`optcgsim_tracker.paths`. Fournit des itérateurs/lecteurs
-qui renvoient le contenu brut ; le parsing vit dans :mod:`optcgsim_tracker.parser`.
+Couche fine au-dessus de :mod:`optcgsim_haki.paths`. Fournit des itérateurs/lecteurs
+qui renvoient le contenu brut ; le parsing vit dans :mod:`optcgsim_haki.parser`.
 """
 
 from __future__ import annotations

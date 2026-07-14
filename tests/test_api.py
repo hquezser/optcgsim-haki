@@ -2,9 +2,9 @@
 
 from fastapi.testclient import TestClient
 
-from optcgsim_tracker.api.server import create_app
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.model import MatchRecord, PlayerInfo
+from optcgsim_haki.api.server import create_app
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.model import MatchRecord, PlayerInfo
 
 
 def _seed_db(path):
@@ -354,7 +354,7 @@ def test_api_stats_detail_value_score_on_with_env(tmp_path, monkeypatch):
                  "avg_value_win": 8.0, "avg_value_loss": -1.0, "avg_cost": 3,
                  "avg_early_value": 2.0, "vpd": 1.67, "ci_low": 1.0, "ci_high": 9.0,
                  "significant": True}]
-    from optcgsim_tracker.analytics import Analytics
+    from optcgsim_haki.analytics import Analytics
     monkeypatch.setattr(Analytics, "value_score_per_card", lambda self, **kw: sentinel)
 
     c = TestClient(app)

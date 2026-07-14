@@ -2,7 +2,7 @@
 
 import pytest
 
-from optcgsim_tracker.features import feature, all_features, _DEFAULTS
+from optcgsim_haki.features import feature, all_features, _DEFAULTS
 
 
 # --- feature() : défauts ---
@@ -128,7 +128,7 @@ def _sample_payload() -> dict:
 
 def _make_engine():
     """Construit un LiveEngine minimal sans DB réelle (le gating n'en a pas besoin)."""
-    from optcgsim_tracker.engine import LiveEngine
+    from optcgsim_haki.engine import LiveEngine
     # On évite __init__ (DB, caches, sources) : on instancie l'objet à la main.
     eng = LiveEngine.__new__(LiveEngine)
     return eng
@@ -241,7 +241,7 @@ def test_gating_defense_flag_off(monkeypatch):
 def test_merge_defense_sim():
     """Les champs de simulation (vies à risque, alerte lethal) ne sont fusionnés que
     quand le lethal a pu être calculé (leaders connus)."""
-    from optcgsim_tracker.engine import LiveEngine
+    from optcgsim_haki.engine import LiveEngine
     d = {"my_counter_pool": 2000}
     LiveEngine._merge_defense_sim(d, None)
     assert "lives_at_risk" not in d and "opp_can_lethal" not in d
@@ -289,7 +289,7 @@ def test_default_profile_payload_end_to_end(monkeypatch, tmp_path):
     # pourrait légitimement apparaître et rendre le test dépendant de l'environnement).
     monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
     from .conftest import FIXTURES
-    from optcgsim_tracker.engine import LiveEngine
+    from optcgsim_haki.engine import LiveEngine
 
     srv = LiveEngine(str(tmp_path / "t.db"), reveal_all=False)
     for line in (FIXTURES / "match_autosaved.log").read_text().splitlines():

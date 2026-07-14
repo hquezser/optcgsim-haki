@@ -2,7 +2,7 @@
 
 Aucun nom de deck n'est écrit dans les logs : on infère le deck joué en comparant les
 cartes du joueur (decklist complète ranked, ou cartes vues AutoSaved) aux decklists
-nommées du jeu (même leader). Voir optcgsim_tracker/deck_match.py.
+nommées du jeu (même leader). Voir optcgsim_haki/deck_match.py.
 
 À relancer après avoir édité/renommé/ajouté des decks dans le jeu : le rattachement
 reflète les fichiers de deck *actuels*.
@@ -20,8 +20,8 @@ import argparse
 import sys
 from collections import Counter
 
-from optcgsim_tracker.db.store import Store
-from optcgsim_tracker.deck_match import load_named_decks, match_deck, my_cards_from_db
+from optcgsim_haki.db.store import Store
+from optcgsim_haki.deck_match import load_named_decks, match_deck, my_cards_from_db
 
 
 def main() -> int:
