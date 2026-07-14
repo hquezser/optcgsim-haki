@@ -1,12 +1,14 @@
 # OPTCGSim Haki
 
-Tracker de statistiques **open-source et gratuit** pour [OPTCGSim](https://optcgsim.com/), le
-simulateur du jeu de cartes One Piece. Il analyse les **fichiers de logs locaux** écrits par le jeu
-sur ta machine et les transforme en une base SQLite interrogeable, pour produire des statistiques
-utiles (winrate par leader, par matchup, impact du mulligan, premier/second, durée…).
+**Assistant de décision en cours de match**, open-source et gratuit, pour
+[OPTCGSim](https://optcgsim.com/), le simulateur du jeu de cartes One Piece. Il lit les
+**fichiers de logs locaux** écrits par le jeu en temps réel et affiche, dans un **overlay HUD**
+par-dessus la partie, uniquement de l'information **exacte et publique** utile à la décision :
+lethal/défense, cartes adverses déjà vues (règle des 4), aide au mulligan, probabilités de pioche.
 
-> Focus v1 : **PC / macOS / Linux**, via analyse des fichiers système. Pas de modification du jeu,
-> pas d'injection, pas d'interception réseau.
+> Focus : **la décision en jeu**, pas les statistiques a posteriori. macOS pour l'overlay natif ;
+> macOS / Linux / Windows pour le reste. Aucune modification du jeu, pas d'injection, pas
+> d'interception réseau — juste la lecture des logs.
 
 ## Comment ça marche
 
@@ -34,61 +36,50 @@ pip install -e .          # + extras dev : pip install -e ".[dev]"
 ## Utilisation
 
 ```bash
-optcgsim-haki backfill            # importe tout l'historique local -> SQLite
-optcgsim-haki stats               # winrate par leader / matchup / mode / ordre / mulligan
-optcgsim-haki show <match_id>     # déroulé détaillé d'une partie
-optcgsim-haki watch               # suivi live en terminal (fair-play par défaut)
-optcgsim-haki dashboard           # dashboard web live (board + archétype adverse) sur :8765
+optcgsim-haki overlay             # ⭐ overlay HUD de décision par-dessus le jeu (macOS)
+optcgsim-haki dashboard           # même moteur, en page web (:8765) — vue live de confort
+optcgsim-haki watch               # suivi live d'une partie en cours, dans le terminal
+optcgsim-haki backfill            # (pré-requis) construit la base SQLite d'historique local
 optcgsim-haki import-cards <f>    # référentiel externe de noms (JSON {id:name} ou CSV id,name)
-
-# Analyses avancées
-optcgsim-haki matchups            # matrice de matchups par leader
-optcgsim-haki elo                 # courbe de rating dans le temps (sparkline)
-optcgsim-haki streaks             # séries win/loss, perf par jour, usage des counters
-optcgsim-haki mulligan            # garder vs mulligan + impact des cartes d'ouverture (lift)
-optcgsim-haki archetype <leader> [cartes...]   # prédit le deck adverse depuis l'historique
-
-# Meta (période de jeu) -> Leader
-optcgsim-haki meta                # winrate par meta (OP14.5 / OP15 / OP16…)
-optcgsim-haki meta OP16           # détail d'un meta : winrate par leader
-
-# Deckbuilding
-optcgsim-haki decks               # liste tes decks (leader, counters)
-optcgsim-haki deck <nom>          # stats d'un deck : Category / Cost / Counter / Type (traits)
-optcgsim-haki watch-decks         # affiche les stats à chaque sauvegarde de deck (live)
 ```
 
-## v1 : fiable par défaut, approximatif optionnel
+> **Pourquoi `backfill` si l'app n'affiche plus de stats ?** L'historique local reste la
+> **donnée d'entraînement** des aides in-match : la reco de mulligan et l'inférence de
+> l'archétype/menaces adverses s'appuient dessus. Les *vues* statistiques (winrate, matchups,
+> historique de matchs…) ont été retirées ; le moteur qui les calculait nourrit désormais la
+> décision en direct.
 
-La v1 n'expose **que ce dont on est sûr**. Les informations *fiables* sont toujours affichées ;
-les informations *approximatives* (inférées du `Player.log` en direct) sont **masquées par défaut**
-et réactivables via des variables d'environnement.
+## Fiable par défaut, inféré en option
 
-**Toujours affiché (fiable) :**
-- toutes les **stats post-match** (logs AutoSaved = vérité terrain) ;
-- la **recommandation de mulligan** (lift + shrinkage) ;
-- en live : **ton** état (main/board/vie) et l'**info publique** adverse (board joué + trash) ;
-- le panneau **défense** (`LIVE_DEFENSE`, ON par défaut) : tes counters/blockers/vie exacts face
-  au board adverse *visible*, + counters adverses déjà dépensés (événements publics du log).
+Principe : par défaut, l'app n'affiche **que ce dont on est sûr** — l'exact (mes snapshots) et
+le public (ce que le jeu a révélé). Les informations *inférées* du `Player.log` (probabilistes,
+sujettes à dérive) sont **masquées par défaut** et réactivables par variable d'environnement, ou
+d'un coup avec `--advanced` sur l'overlay.
 
-**Masqué par défaut (approximatif, inféré du log live) :**
+**Toujours affiché (fiable / exact / public) :**
+- **Ma défense** (`LIVE_DEFENSE`) : mes counters/blockers/vie exacts face au board adverse
+  *visible*, counter requis pour tenir le tour, counters adverses déjà brûlés ;
+- **Vu chez l'adversaire** (`LIVE_OPP_SEEN`) : exemplaires joués/défaussés, `n/4` (règle des 4) ;
+- **Aide au mulligan** (`MULLIGAN_RECO`) : garder / mulligan sur la main de départ (score vs deck) ;
+- le leader adverse **observé** (via ses actions) et les decks restants.
+
+**Masqué par défaut (inféré du log live) :**
 
 | Flag (`OPTCG_FEATURE_…=1`) | Ce qu'il réactive |
 |---|---|
+| `LIVE_LETHAL` | solveur de lethal offensif (sur données inférées) |
+| `LIVE_MENACES` | menaces probables au prochain tour |
+| `LIVE_TRIGGER_RISK` | risque de trigger dans les vies adverses |
+| `LIVE_ARCHETYPE` | inférence du deck/leader adverse |
+| `LIVE_DRAW_ODDS` | odds hypergéométriques de pioche (si decklist non certaine) |
 | `LIVE_OPP_HAND` | main adverse reconstruite (dérive sur effets) |
 | `LIVE_OPP_LIFE` | vie adverse estimée |
-| `LIVE_LETHAL` | solveur de lethal (sur données inférées) |
-| `LIVE_MENACES` | menaces probables T+1 |
-| `LIVE_TRIGGER_RISK` | risque de trigger |
-| `LIVE_ARCHETYPE` | inférence du deck/leader adverse |
-| `LIVE_DRAW_ODDS` | odds hypergéométriques de pioche (decklist devinée) |
-| `VALUE_SCORE` | Value Score / VPD / Early Value (heuristique) |
 
 ```bash
 # tout réactiver (usage avancé / perso) :
 OPTCG_PROFILE=advanced optcgsim-haki dashboard
-# ou au cas par cas :
-OPTCG_FEATURE_LIVE_LETHAL=1 OPTCG_FEATURE_VALUE_SCORE=1 optcgsim-haki dashboard
+# overlay avec panneaux inférés :
+optcgsim-haki overlay --advanced
 ```
 
 > En **mode état exact** (setup perso avec un mod optionnel, non distribué avec ce dépôt),
@@ -129,8 +120,8 @@ optcgsim-haki import-cards cartes.csv
 
 ## Overlay HUD (macOS)
 
-Un overlay natif affiche un HUD compact (lethal, menaces T+1, draw odds, vies) **par-dessus le jeu** :
-fenêtre **toujours au-dessus**, **sans bordure**, **transparente** et **click-through** (la souris
+L'overlay est **le produit** : un HUD compact de décision **par-dessus le jeu** — fenêtre
+**toujours au-dessus**, **sans bordure**, **transparente** et **click-through** (la souris
 traverse l'overlay pour cliquer sur le jeu). C'est une fenêtre OS standard — **aucune injection**,
 le jeu ne la voit pas.
 
@@ -144,15 +135,13 @@ optcgsim-haki overlay           # démarre l'API + l'overlay (cible la fenêtre 
 ```
 
 Le HUD est **fiable par défaut** : il n'affiche que l'exact/public que le jeu ne montre pas —
-**Ma défense** (mes counters/blockers/vie face au board adverse visible), counters adverses déjà
-brûlés (événements publics), leader adverse, decks restants. `--advanced` réactive les panneaux
-inférés (lethal offensif avec seuil conditionnel, menaces) ; en **mode exact** (mod), tout
-redevient affichable car tout est vrai. Il s'ancre par défaut sur la **bande du chat** du sim,
-entre les deux mains. Ajuste avec `--zone` + `--hud-debug` si ta disposition diffère.
-
-Par défaut l'overlay active le **profil avancé** (panneaux inférés : lethal, menaces T+1, draw odds,
-vie adverse estimée) — c'est un outil perso. Il **n'affiche jamais la main adverse**. `--fair`
-revient au profil sobre. En début de partie il reste léger (peu d'info connue) puis se remplit.
+**Ma défense** (counters/blockers/vie face au board adverse visible + counter requis pour tenir),
+**Vu chez l'adversaire** (exemplaires `n/4`), **aide au mulligan** (pendant la fenêtre de
+mulligan), leader adverse observé et decks restants. `--advanced` réactive les panneaux inférés
+(lethal offensif avec seuil conditionnel, menaces T+1) ; en **mode exact** (mod), tout redevient
+affichable car tout est vrai. Il **n'affiche jamais la main cachée adverse**. Il s'ancre par
+défaut sur la **bande du chat** du sim, entre les deux mains ; ajuste avec `--zone` + `--hud-debug`
+si ta disposition diffère.
 
 - Un menu **🎴 dans la barre de menus macOS** permet de basculer **interactif ⇄ passe-souris**,
   afficher/masquer, recaler sur le jeu, ou quitter (click-through et interactivité s'excluent).
