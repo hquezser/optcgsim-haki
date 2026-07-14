@@ -296,11 +296,17 @@ def test_default_profile_payload_end_to_end(monkeypatch, tmp_path):
         srv.state.feed_line(line)
     payload = srv._state_payload()
 
-    # Fiable présent.
+    # Fiable présent. Champs garantis par _build_defense_payload (toujours calculés) :
+    # my_counter_pool/my_blockers/opp_leader_known. lives_at_risk/opp_can_lethal ne sont
+    # fusionnés (_merge_defense_sim) que si le lethal a pu être résolu (cards en base) —
+    # non garanti ici (db vide), donc optionnels : on vérifie le type SI présents.
     assert payload["features"]["live_defense"] is True
     assert "defense" in payload
     d = payload["defense"]
-    assert d["my_counter_pool"] >= 0 and isinstance(d["opp_can_lethal"], bool)
+    assert d["my_counter_pool"] >= 0
+    assert isinstance(d["my_blockers"], int) and isinstance(d["opp_leader_known"], bool)
+    if "opp_can_lethal" in d:
+        assert isinstance(d["opp_can_lethal"], bool)
     for side in ("me", "opp"):
         cs = payload[side]["counters_spent"]
         assert cs["count"] >= 0 and cs["total"] >= 0
