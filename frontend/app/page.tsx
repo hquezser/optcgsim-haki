@@ -111,9 +111,7 @@ export default function LiveDashboard() {
           >
             {coachMode ? "🧭 Coach" : "📊 Full"}
           </button>
-          <a href="/stats" className="text-blue-400 hover:underline">Stats</a>
-          <a href="/decks" className="text-blue-400 hover:underline">Decks</a>
-          <a href="/matches" className="text-blue-400 hover:underline">Matches</a>
+          <a href="/overlay" className="text-blue-400 hover:underline">Overlay</a>
         </span>
       </header>
 

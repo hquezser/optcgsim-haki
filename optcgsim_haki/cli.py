@@ -8,31 +8,17 @@ import sys
 
 import pathlib
 
-from .analytics import Analytics, sparkline
+from .analytics import Analytics
 from .archetype import ArchetypeModel
 from .cardmeta import build_card_meta
 from .deckstats import compute_stats, parse_deck_file
-from .meta import build_meta_timeline
 from .carddb import CardDB
 from .cardnames import load_card_names
 from .db.store import Store
 from .ingest import ingest_all
 from .sources import Sources
-from .stats import Row, Stats
 
 DEFAULT_DB = "optcg.db"
-
-
-def _print_rows(title: str, rows: list[Row], limit: int | None = None) -> None:
-    print(f"\n== {title} ==")
-    if not rows:
-        print("  (aucune donnée)")
-        return
-    if limit:
-        rows = rows[:limit]
-    for r in rows:
-        bar = "█" * round(r.winrate / 5)
-        print(f"  {r.label:<34} {r.winrate:5.1f}%  ({r.wins}-{r.losses})  {bar}")
 
 
 def cmd_backfill(args) -> int:
@@ -87,119 +73,6 @@ def cmd_import_cards(args) -> int:
     return 0
 
 
-def cmd_stats(args) -> int:
-    with Store(args.db) as st:
-        stats = Stats(st)
-        mode = args.mode
-        ov = stats.overall(mode)
-        scope = "tous modes" if mode == "all" else mode
-        print(f"\n### Statistiques ({scope}) — {ov.wins}-{ov.losses}  "
-              f"({ov.winrate:.1f}% sur {ov.total} parties décisives)")
-        dur = stats.avg_duration(mode)
-        if dur:
-            print(f"Durée moyenne : {dur/60:.1f} min")
-        _print_rows("Par leader (≥5 parties)", stats.by_my_leader(mode, having_min=5), limit=15)
-        _print_rows("Par deck (≥5 parties)", stats.by_my_deck(mode, having_min=5), limit=20)
-        _print_rows("Par matchup (≥3 parties)", stats.by_matchup(mode, having_min=3), limit=15)
-        _print_rows("Premier / Second", stats.by_turn_order(mode))
-        _print_rows("Mulligan", stats.by_mulligan(mode))
-    return 0
-
-
-def cmd_show(args) -> int:
-    with Store(args.db) as st:
-        rows = st.query("SELECT * FROM matches WHERE id LIKE ?", (args.match_id + "%",))
-        if not rows:
-            print(f"Aucun match avec id ~ {args.match_id}")
-            return 1
-        m = rows[0]
-        name = lambda c: st.card_name(c) if c else "?"
-        print(f"\n=== Match {m['id']} ===")
-        print(f"  {m['played_at']}  | {m['mode']} | {m['format']} ({m['format_confidence']})")
-        print(f"  {m['me']} [{name(m['my_leader'])}]  vs  {m['opponent']} [{name(m['opp_leader'])}]")
-        order = "premier" if m["i_went_first"] == 1 else ("second" if m["i_went_first"] == 0 else "?")
-        print(f"  Ordre : {order} | Résultat : {m['result']} ({m['win_reason']})"
-              f"{' | durée %.0fs' % m['duration_s'] if m['duration_s'] else ''}")
-        if m["my_rating"] is not None:
-            print(f"  Rating : {m['my_rating']:.1f} (Δ {m['rating_delta']:+.1f})")
-
-        for side, who in (("me", m["me"]), ("opp", m["opponent"])):
-            oh = st.query(
-                "SELECT card_id, kept FROM opening_hands WHERE match_id=? AND side=? ORDER BY position",
-                (m["id"], side))
-            if oh:
-                kept = "gardée" if oh[0]["kept"] == 1 else ("mulligan" if oh[0]["kept"] == 0 else "?")
-                cards = ", ".join(name(r["card_id"]) for r in oh)
-                print(f"  Main {who} ({kept}) : {cards}")
-
-        snaps = st.query(
-            "SELECT turn, side, hand_count, board_ids, life, deck_remaining FROM turn_snapshots "
-            "WHERE match_id=? AND side='me' ORDER BY idx", (m["id"],))
-        if snaps:
-            print("  Évolution (moi) :")
-            for s in snaps:
-                board = len(json.loads(s["board_ids"]))
-                deck = s["deck_remaining"] if s["deck_remaining"] is not None else "?"
-                print(f"    T{s['turn']}: main={s['hand_count']} deck={deck} "
-                      f"board={board} life={s['life']}")
-    return 0
-
-
-def cmd_matchups(args) -> int:
-    with Store(args.db) as st:
-        matrix = Analytics(st).matchup_matrix(args.mode, args.min_games)
-        if not matrix:
-            print("Pas assez de données.")
-            return 0
-        for leader in sorted(matrix, key=lambda k: -sum(c.total for c in matrix[k])):
-            cells = matrix[leader]
-            tot_w = sum(c.wins for c in cells)
-            tot_l = sum(c.losses for c in cells)
-            print(f"\n### {leader}  ({tot_w}-{tot_l})")
-            for c in cells:
-                flag = "✓" if c.winrate >= 50 else "✗"
-                label = f"{c.opp_name} [{c.opp_leader}]"
-                print(f"  {flag} vs {label:<34} {c.winrate:5.1f}%  ({c.wins}-{c.losses})")
-    return 0
-
-
-def cmd_elo(args) -> int:
-    with Store(args.db) as st:
-        curve = Analytics(st).elo_curve(args.leader)
-        if not curve:
-            print("Aucune donnée de rating (parties classées requises).")
-            return 0
-        vals = [r for _, r in curve]
-        print(f"Rating (parties classées) : {len(vals)} points")
-        print(f"  début {vals[0]:.0f} → actuel {vals[-1]:.0f}  "
-              f"(min {min(vals):.0f}, max {max(vals):.0f}, pic Δ {max(vals)-vals[0]:+.0f})")
-        print("  " + sparkline(vals))
-    return 0
-
-
-def cmd_streaks(args) -> int:
-    with Store(args.db) as st:
-        a = Analytics(st)
-        s = a.streaks(args.mode)
-        kind = {"win": "victoires", "loss": "défaites", None: "—"}[s["current"][0]]
-        print(f"Séries ({args.mode}) sur {s['total']} parties :")
-        print(f"  meilleure série victoires : {s['best_win_streak']}")
-        print(f"  pire série défaites       : {s['best_loss_streak']}")
-        print(f"  série en cours            : {s['current'][1]} {kind}")
-        days = a.by_day(args.mode)
-        if days:
-            print("\nPar jour (10 derniers) :")
-            for d, w, l in days[-10:]:
-                wr = 100 * w / (w + l) if (w + l) else 0
-                print(f"  {d}  {w}-{l}  ({wr:.0f}%)  {'█' * w}{'░' * l}")
-        cu = a.counter_usage(args.mode)
-        if cu:
-            print(f"\nCounters joués (parties loggées, n={cu['n_matches']}) :")
-            print(f"  moyenne {cu['avg_counters']:.1f}/partie  |  "
-                  f"victoires {cu['avg_in_wins']:.1f}  vs  défaites {cu['avg_in_losses']:.1f}")
-    return 0
-
-
 def cmd_mulligan(args) -> int:
     with Store(args.db) as st:
         a = Analytics(st)
@@ -246,10 +119,6 @@ def cmd_archetype(args) -> int:
     return 0
 
 
-def _deck_dir():
-    return Sources().paths.app_support
-
-
 def _print_deck_stats(s) -> None:
     lead = f"{s.leader_name or '?'} [{s.leader}]" if s.leader else "?"
     print(f"\n### {s.name}  — Leader: {lead}   ({s.total} cartes, hors leader)")
@@ -281,51 +150,6 @@ def _print_deck_stats(s) -> None:
             print(f"    {sub:<22} {n}")
 
     print("  Couleurs : " + ", ".join(f"{c} {n}" for c, n in s.colors.items()))
-
-
-def cmd_decks(args) -> int:
-    meta = build_card_meta(Sources().paths, pathlib.Path(args.db + ".cardmeta.json"))
-    decks = sorted(_deck_dir().glob("*.txt"))
-    if not decks:
-        print("Aucun deck trouvé.")
-        return 0
-    print(f"{len(decks)} decks :")
-    for p in decks:
-        s = compute_stats(parse_deck_file(p), meta)
-        print(f"  {s.name:<26} {s.leader_name or s.leader or '?':<18} "
-              f"{s.total} cartes | counter +1k×{s.counter_1000} +2k×{s.counter_2000}")
-    return 0
-
-
-def cmd_deck(args) -> int:
-    meta = build_card_meta(Sources().paths, pathlib.Path(args.db + ".cardmeta.json"))
-    matches = [p for p in _deck_dir().glob("*.txt") if args.name.lower() in p.stem.lower()]
-    if not matches:
-        print(f"Aucun deck correspondant à « {args.name} ».")
-        return 1
-    for p in matches:
-        _print_deck_stats(compute_stats(parse_deck_file(p), meta))
-    return 0
-
-
-def cmd_meta(args) -> int:
-    timeline = build_meta_timeline(Sources().paths, pathlib.Path(args.db + ".metas.json"))
-    if not timeline:
-        print("Impossible de construire la timeline des metas (OPBounty.pck introuvable ?).")
-        return 1
-    with Store(args.db) as st:
-        a = Analytics(st)
-        if args.meta:                       # drill-down Meta -> Leader
-            rows = a.leaders_in_meta(timeline, args.meta, args.mode, having_min=args.min_games)
-            if not rows:
-                labels = ", ".join(m.label for m in timeline)
-                print(f"Aucune donnée pour le meta « {args.meta} ».\nMetas connus : {labels}")
-                return 1
-            _print_rows(f"Leaders en {args.meta} ({args.mode})", rows)
-        else:                               # vue d'ensemble par meta
-            _print_rows(f"Winrate par meta ({args.mode})", a.by_meta(timeline, args.mode))
-            print("\n→ détail d'un meta : optcgsim-haki meta \"<label>\"")
-    return 0
 
 
 def cmd_watch_decks(args) -> int:
@@ -380,27 +204,6 @@ def build_parser() -> argparse.ArgumentParser:
     pic.add_argument("file")
     pic.set_defaults(func=cmd_import_cards)
 
-    ps = sub.add_parser("stats", help="afficher les statistiques")
-    ps.add_argument("--mode", default="all", choices=["all", "ranked", "direct"])
-    ps.set_defaults(func=cmd_stats)
-
-    psh = sub.add_parser("show", help="détail d'un match (préfixe d'id)")
-    psh.add_argument("match_id")
-    psh.set_defaults(func=cmd_show)
-
-    pm = sub.add_parser("matchups", help="matrice de matchups par leader")
-    pm.add_argument("--mode", default="all", choices=["all", "ranked", "direct"])
-    pm.add_argument("--min-games", type=int, default=3)
-    pm.set_defaults(func=cmd_matchups)
-
-    pe = sub.add_parser("elo", help="courbe de rating dans le temps")
-    pe.add_argument("--leader", default=None, help="filtrer par id de leader")
-    pe.set_defaults(func=cmd_elo)
-
-    pst = sub.add_parser("streaks", help="séries et performance par jour")
-    pst.add_argument("--mode", default="all", choices=["all", "ranked", "direct"])
-    pst.set_defaults(func=cmd_streaks)
-
     pmu = sub.add_parser("mulligan", help="analyse mulligan + impact des cartes d'ouverture")
     pmu.add_argument("--mode", default="all", choices=["all", "ranked", "direct"])
     pmu.add_argument("--leader", default=None, help="filtrer l'impact des cartes par id de leader")
@@ -411,18 +214,6 @@ def build_parser() -> argparse.ArgumentParser:
     pa.add_argument("leader", help="id du leader adverse (ex: OP09-001)")
     pa.add_argument("revealed", nargs="*", help="cartes déjà révélées (ids)")
     pa.set_defaults(func=cmd_archetype)
-
-    pmt = sub.add_parser("meta", help="stats par meta (période) ; puis par leader")
-    pmt.add_argument("meta", nargs="?", default=None, help="label de meta pour le détail par leader")
-    pmt.add_argument("--mode", default="all", choices=["all", "ranked", "direct"])
-    pmt.add_argument("--min-games", type=int, default=1)
-    pmt.set_defaults(func=cmd_meta)
-
-    sub.add_parser("decks", help="lister tes decks avec stats résumées").set_defaults(func=cmd_decks)
-
-    pdk = sub.add_parser("deck", help="stats détaillées d'un deck (courbe, counters, couleurs)")
-    pdk.add_argument("name", help="nom (ou fragment) du deck")
-    pdk.set_defaults(func=cmd_deck)
 
     sub.add_parser("watch-decks",
                    help="afficher les stats d'un deck à chaque sauvegarde (deckbuilding live)"
