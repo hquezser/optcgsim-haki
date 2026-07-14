@@ -271,7 +271,7 @@ function DetailView({
         )}
       </Section>
       <Section title={`Main de départ — lift brut (n≥15, baseline ${data.opening_impact.baseline_wr ?? "?"}%, n=${data.opening_impact.n})`} tip={STATS_TIPS.lift_brut}>
-        <OpeningImpactList cards={data.opening_impact.cards} baseline={data.opening_impact.baseline_wr ?? 0} />
+        <OpeningImpactList cards={data.opening_impact.cards} />
       </Section>
       <Section title="Cartes posées — lift conditionné par phase (n≥5)" tip={STATS_TIPS.lift_phase}>
         <PlayedImpactList cards={data.played_impact} />

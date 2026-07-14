@@ -23,7 +23,8 @@ des cartes vues, et stocke tout dans SQLite.
 ## Installation
 
 ```bash
-pip install -e .          # + extras dev : pip install -e ".[dev]"
+python3 -m pip install --upgrade pip
+python3 -m pip install -e .  # + extras dev : python3 -m pip install -e ".[dev]"
 ```
 
 ## Utilisation

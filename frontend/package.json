@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
+    "lint": "eslint .",
     "build": "next build",
-    "start": "next start --port 3000"
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "16.2.9",
@@ -17,6 +19,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

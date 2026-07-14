@@ -11,7 +11,7 @@ function ciMargin(wr: number, n: number): number {
   return 1.96 * Math.sqrt((p * (1 - p)) / Math.max(1, n)) * 100;
 }
 
-export function OpeningImpactList({ cards, baseline }: { cards: OpeningImpactCard[]; baseline: number }) {
+export function OpeningImpactList({ cards }: { cards: OpeningImpactCard[] }) {
   if (!cards || cards.length === 0) return <p className="text-slate-500 text-sm">—</p>;
   return (
     <div className="space-y-1">

@@ -1,0 +1,321 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Lint Python
+        run: python -m ruff check .
+
+      - name: Run Python tests
+        run: >-
+          python -m pytest tests/ -q
+          --cov=optcgsim_haki
+          --cov-report=term
+          --cov-report=xml
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.14'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python-coverage
+          path: coverage.xml
+          if-no-files-found: error
+
+  cross-platform:
+    name: Python 3.13 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Smoke-test CLI
+        run: optcgsim-haki --help
+
+  macos-overlay:
+    name: macOS overlay extra
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install overlay dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,overlay]"
+
+      - name: Verify overlay modules
+        run: |
+          python -c "import webview"
+          python -c "import Cocoa; import Quartz"
+          python -c "import optcgsim_haki.overlay.geometry"
+
+      - name: Run overlay tests
+        run: python -m pytest tests/test_overlay_geometry.py -q
+
+  frontend:
+    name: Frontend / Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - "20.19.0"
+          - "24"
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Build static frontend
+        run: npm run build
+
+      - name: Verify static export
+        run: test -f out/index.html && test -d out/_next
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  package:
+    name: Build and smoke-test distributions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          npm ci --prefix frontend
+
+      - name: Build embedded frontend
+        run: ./scripts/build_frontend.sh
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distributions
+        run: python -m twine check dist/*
+
+      - name: Verify packaged frontend files
+        run: |
+          python - <<'PY'
+          import glob
+          import tarfile
+          import zipfile
+
+          wheel = glob.glob("dist/*.whl")
+          sdist = glob.glob("dist/*.tar.gz")
+          assert len(wheel) == 1, wheel
+          assert len(sdist) == 1, sdist
+
+          with zipfile.ZipFile(wheel[0]) as archive:
+              names = archive.namelist()
+              assert "optcgsim_haki/db/schema.sql" in names
+              assert "optcgsim_haki/static/index.html" in names
+              assert any(name.startswith("optcgsim_haki/static/_next/") for name in names)
+
+          with tarfile.open(sdist[0]) as archive:
+              names = archive.getnames()
+              assert any(name.endswith("/optcgsim_haki/db/schema.sql") for name in names)
+              assert any(name.endswith("/optcgsim_haki/static/index.html") for name in names)
+          PY
+
+      - name: Smoke-test installed wheel outside checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/package-smoke"
+          "$RUNNER_TEMP/package-smoke/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/package-smoke/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/package-smoke/bin/optcgsim-haki" --help
+          "$RUNNER_TEMP/package-smoke/bin/python" - <<'PY'
+          import pathlib
+          import tempfile
+          import asyncio
+
+          from optcgsim_haki import __version__
+          from optcgsim_haki.api.server import create_app
+          from optcgsim_haki.resources import has_frontend, static_dir
+
+          assert has_frontend()
+          static = static_dir()
+          assert static is not None
+          assert "site-packages" in str(static)
+          assert (static / "index.html").is_file()
+
+          db_path = pathlib.Path(tempfile.gettempdir()) / "optcgsim-haki-smoke.db"
+          app = create_app(str(db_path))
+          assert app.version == __version__
+
+          async def request_root():
+              messages = [{"type": "http.request", "body": b"", "more_body": False}]
+              responses = []
+
+              async def receive():
+                  return messages.pop(0)
+
+              async def send(message):
+                  responses.append(message)
+
+              await app(
+                  {
+                      "type": "http",
+                      "asgi": {"version": "3.0"},
+                      "http_version": "1.1",
+                      "method": "GET",
+                      "scheme": "http",
+                      "path": "/",
+                      "raw_path": b"/",
+                      "query_string": b"",
+                      "root_path": "",
+                      "headers": [],
+                      "client": ("127.0.0.1", 12345),
+                      "server": ("127.0.0.1", 8765),
+                  },
+                  receive,
+                  send,
+              )
+              return responses
+
+          responses = asyncio.run(request_root())
+          start = next(message for message in responses if message["type"] == "http.response.start")
+          assert start["status"] == 200
+          headers = dict(start["headers"])
+          assert b"text/html" in headers[b"content-type"]
+          PY
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  required:
+    name: CI / required
+    if: always()
+    needs:
+      - python
+      - cross-platform
+      - macos-overlay
+      - frontend
+      - package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI job
+        env:
+          PYTHON_RESULT: ${{ needs.python.result }}
+          CROSS_PLATFORM_RESULT: ${{ needs.cross-platform.result }}
+          MACOS_OVERLAY_RESULT: ${{ needs.macos-overlay.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        run: |
+          for result in \
+            "$PYTHON_RESULT" \
+            "$CROSS_PLATFORM_RESULT" \
+            "$MACOS_OVERLAY_RESULT" \
+            "$FRONTEND_RESULT" \
+            "$PACKAGE_RESULT"
+          do
+            test "$result" = "success"
+          done

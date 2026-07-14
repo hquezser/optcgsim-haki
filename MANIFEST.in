@@ -1,5 +1,6 @@
 include LICENSE
 include README.md
+include optcgsim_haki/db/schema.sql
 
 # Frontend statique pré-buildé (servi par FastAPI)
 recursive-include optcgsim_haki/static *
