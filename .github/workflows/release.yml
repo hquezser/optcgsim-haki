@@ -90,7 +90,7 @@ jobs:
             "from optcgsim_haki.resources import has_frontend; assert has_frontend()"
 
       - name: Attest distribution provenance
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: dist/*
 
