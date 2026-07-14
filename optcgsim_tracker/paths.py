@@ -123,9 +123,13 @@ def detect_paths() -> GamePaths:
     if override:
         # Échappatoire pour tests / installations non standard.
         base = Path(override)
+        # opbounty SOUS base (pas base.parent) : sinon deux tests utilisant OPTCG_APP_SUPPORT
+        # avec des tmp_path différents mais un parent commun (cas fréquent : tmp_path de pytest)
+        # finissent par partager le MÊME chemin OPBounty -> fuite d'état entre tests, et en
+        # usage réel l'« échappatoire » ne sandboxe alors pas vraiment tous les chemins du jeu.
         gp = GamePaths(
             app_support=base,
-            opbounty=base.parent / "Godot/app_userdata/OPBounty",
+            opbounty=base / "Godot/app_userdata/OPBounty",
             player_log=base / "Player.log",
             player_log_prev=base / "Player-prev.log",
         )
