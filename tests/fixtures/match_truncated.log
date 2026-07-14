@@ -1,0 +1,16 @@
+Attempting to connect to TRUNC1
+Version is 1.40a.60
+[Bob#0002] Leader is Kaido [<mark><link="OP01-060">OP01-060</link></mark>]
+[Alice#0001] Leader is Sanji [<mark><link="PRB01-001">PRB01-001</link></mark>]
+[Alice#0001] Hand before Mulligan: [OP01-001,OP01-025]
+[Alice#0001] Chose to go First
+[Bob#0002] Hand: [OP01-001]
+[Bob#0002] Life: 1
+[Alice#0001] Hand: [OP01-025]
+[Alice#0001] Life: 3
+[Alice#0001] End Turn
+[Alice#0001] Deploy Roronoa Zoro [<mark><link="OP01-025">OP01-025</link></mark>]
+[Alice#0001] Sanji [<mark><link="PRB01-001">PRB01-001</link></mark>] attacking Kaido [<mark><link="OP01-060">OP01-060</link></mark>]
+Sanji [<mark><link="PRB01-001">PRB01-001</link></mark>][7000] vs Kaido [<mark><link="OP01-060">OP01-060</link></mark>][5000]
+Kaido [<mark><link="OP01-060">OP01-060</link></mark>] hit for 1 damage
+[Alice#0001] Roronoa Zoro [<mark><link="OP01-025">OP01-025</link></mark>] attacking Kaido [<mark><link="OP01-060">OP01-060</link></mark>]
