@@ -1,0 +1,37 @@
+# Databases / generated data
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+*.cardnames.json
+*.cardmeta.json
+*.leaderlife.json
+*.metas.json
+data/
+
+# Personal / raw game data — never commit
+**/CombatLogs/
+**/Player*.log
+**/my_matches
+*.plist
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Frontend build output (généré par scripts/build_frontend.sh)
+frontend/out/
+frontend/.next/
+frontend/node_modules/
+
+# Frontend statique copié dans le package (généré par scripts/build_frontend.sh)
+optcgsim_tracker/static/
+
+# OS
+.DS_Store
