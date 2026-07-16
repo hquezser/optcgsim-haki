@@ -1577,3 +1577,36 @@ def test_me_leader_from_strict_deck_match_without_logged_deck(tmp_path, monkeypa
     st.feed_line("Hand before Mulligan: [EB04-007,OP09-009,OP09-020,EB04-004,OP09-014]")
     payload = srv._state_payload()
     assert payload["me"]["leader"] == "PRB01-001"
+
+
+def test_worst_case_counts_lives_taken_to_hand(tmp_path):
+    """RÉGRESSION (partie réelle, « Lethal GARANTI » perdu) : en live, les vies adverses
+    prises passent en main SANS événement RZ1 -> la main était sous-comptée et le pire cas
+    de counter sous-estimé. La correction doit compter net_RZ1 + vies perdues adverses."""
+    class _Meta:
+        def __init__(self, life): self.life = life
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    _seed_lethal_cards(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    srv.card_meta = {"LME": _Meta(5), "LOPP": _Meta(5), "BIG": _Meta(None)}
+    st = _live_match(srv, me_leader="LME", opp_leader="LOPP")
+    st.me.life = 5                      # snapshot : je n'ai rien perdu
+    st.me.board_ids = ["BIG", "BIG", "BIG"]
+    st.me.hand_ids = []
+    st.me.hand_count_known = True
+    st.me.don_on_field = 10
+    st.opp.life = None                  # live : pas de snapshot adverse
+    st.opp.board_ids = []
+    st.opp.hand_count_known = False
+    st.opp.hand_count_rz1 = 1           # net RZ1 : 1 seule carte vue entrer
+    # 3 vies adverses prises -> 3 "life added to hand" (aucune perte chez moi).
+    for _ in range(3):
+        st.feed_line("Life added to hand")
+
+    p = srv._state_payload()
+    assert p["opp"]["life"] == 2                          # 5 - 3
+    assert p["opp"]["hand_count"] == 4                    # 1 (RZ1) + 3 (vies)
+    l = p["lethal"]
+    assert l["opp_hand_count"] == 4
+    assert l["opp_counter_worst"] == 8000                 # 4 × 2000 (plus 2000 !)

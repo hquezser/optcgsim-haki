@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Lethal, LethalConfidence, AttackPlanStep } from "@/lib/types";
 import { TooltipIcon } from "./Tooltip";
 import { STATS_TIPS } from "@/lib/stats-tips";
@@ -21,11 +22,27 @@ function Factors({ conf }: { conf?: LethalConfidence | null }) {
 export function LethalPanel({
   lethal,
   compact = false,
+  oppLeader,
 }: {
   lethal?: Lethal;
   /** Overlay : bannière + plan d'attaque seulement (pas les boîtes de score ni le titre). */
   compact?: boolean;
+  /** Id du leader adverse : la marge d'effets est mémorisée PAR leader (localStorage). */
+  oppLeader?: string | null;
 }) {
+  // --- Marge d'effets INTERACTIVE (décision produit) : les effets défensifs (leader qui se
+  // pump, events) sont impossibles à modéliser exhaustivement. L'humain injecte une marge
+  // (pas de 1000) ajoutée au pire cas ; mémorisée par leader adverse pour les rematchs.
+  const storageKey = `haki-lethal-margin:${oppLeader ?? "global"}`;
+  const [margin, setMargin] = useState(0); // en milliers (2 = +2000)
+  useEffect(() => {
+    try { setMargin(parseInt(localStorage.getItem(storageKey) ?? "0", 10) || 0); } catch { setMargin(0); }
+  }, [storageKey]);
+  const bump = (d: number) => setMargin((m) => {
+    const v = Math.max(0, Math.min(20, m + d));
+    try { localStorage.setItem(storageKey, String(v)); } catch {}
+    return v;
+  });
   if (!lethal) return null;
 
   // --- Bannière principale : confiance GRADUÉE plutôt qu'un binaire trompeur. Un lethal
@@ -46,9 +63,12 @@ export function LethalPanel({
     const prob = lethal.me_lethal_prob;
     const k = (v: number) => (v >= 1000 ? `${v / 1000}k` : `${v}`);
     // Modèle « pire cas 2K » : l'annonce fiable est le lethal GARANTI (tient même si chaque
-    // carte en main adverse est un counter 2K). Sinon, fait conditionnel exact : le seuil.
-    const guaranteed = lethal.me_lethal_guaranteed;
+    // carte en main adverse est un counter 2K), PLUS la marge d'effets réglée par le joueur
+    // (effets défensifs non modélisables : leader qui se pump, events).
     const worst = lethal.opp_counter_worst;
+    const worstAdj = worst != null ? worst + margin * 1000 : null;
+    const guaranteed = (lethal.me_counter_threshold != null && worstAdj != null
+      && lethal.me_counter_threshold >= worstAdj);
     // DON!! ouverts adverses -> events de défense possibles (peuvent dépasser le pire cas 2K).
     const oppDon = lethal.opp_don_available;
     const head = guaranteed ? "🎯 Lethal GARANTI ce tour" : "🎯 Lethal possible";
@@ -58,15 +78,29 @@ export function LethalPanel({
     banner = (
       <div className={`mb-2 rounded border bg-gradient-to-r p-2 text-center text-sm font-semibold ${cls}`}>
         {head}
-        {guaranteed && worst != null && (
-          <span className="font-normal"> — tient même à {k(worst)} de counter adverse</span>
+        {guaranteed && worstAdj != null && (
+          <span className="font-normal"> — tient même à {k(worstAdj)} de counter adverse</span>
         )}
         {!guaranteed && lethal.me_counter_threshold != null && (
           <span className="font-normal">
             {" "}— tient si counters adverses ≤ {k(lethal.me_counter_threshold)}
-            {worst != null && <span className="text-slate-400"> (pire cas {k(worst)})</span>}
+            {worstAdj != null && (
+              <span className="text-slate-400">
+                {" "}(pire cas {k(worst!)}{margin > 0 ? ` + marge ${margin}k` : ""})
+              </span>
+            )}
           </span>
         )}
+        <span
+          className="mt-1 flex items-center justify-center gap-1.5 text-xs font-normal text-slate-300"
+          title="Marge pour les effets défensifs NON modélisés (ex. leader Nami OP11 : trash 1 carte → +2000 pendant ta défense). Ajoutée au pire cas ; mémorisée pour ce leader adverse. Nécessite le mode Interactif (menu 🎴) pour cliquer."
+        >
+          marge effets : {margin}k
+          <button onClick={() => bump(-1)}
+            className="rounded bg-slate-700 px-1.5 leading-tight hover:bg-slate-600">−</button>
+          <button onClick={() => bump(1)}
+            className="rounded bg-slate-700 px-1.5 leading-tight hover:bg-slate-600">+</button>
+        </span>
         {oppDon > 0 && (
           <span className="ml-1 block text-xs font-normal text-amber-400">
             ⚠ {oppDon} DON ouverts → event de défense possible

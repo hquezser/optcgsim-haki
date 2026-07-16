@@ -1150,6 +1150,19 @@ class LiveEngine:
         # cumulés sur ce leader (lignes "hit for N damage", suivies dans LiveState par card_id).
         # Garde-fou : vie négative -> None (on ne devine pas). En mode AutoSaved, le snapshot
         # texte prime (opp.life déjà renseigné) -> on n'écrase pas.
+        # Pertes de vies ADVERSES : source la plus informée entre les lignes "hit for"
+        # (AutoSaved, absentes en live) et la dérivation live des "life added to hand"
+        # (total − MES pertes, connues par snapshot). Sert à la vie ET au compte de main
+        # (chaque vie perdue = 1 carte entrée en main, non émise dans le flux RZ1).
+        opp_lives_lost = 0
+        if opp_leader:
+            mm = self.card_meta.get(me_leader) if me_leader else None
+            my_life_v = (payload.get("me") or {}).get("life")
+            my_lost = (max(0, mm.life - my_life_v)
+                       if (mm and mm.life is not None and my_life_v is not None) else 0)
+            opp_lives_lost = max(self.state.leader_damage(opp_leader),
+                                 max(0, self.state._life_to_hand - my_lost))
+
         def _apply_life(side_key: str, leader: str | None) -> None:
             if not leader or payload.get(side_key) is None:
                 return
@@ -1158,19 +1171,8 @@ class LiveEngine:
             meta = self.card_meta.get(leader)
             if not meta or meta.life is None:
                 return
-            damage = self.state.leader_damage(leader)
-            if side_key == "opp":
-                # En LIVE, pas de "hit for N damage" -> leader_damage=0. On dérive les pertes
-                # adverses des "life added to hand" (1 vie perdue par l'un des deux) en
-                # retranchant MES pertes (vie de base − ma vie snapshot). On prend le max des
-                # deux sources (hits AutoSaved vs life-to-hand live). Estimation (un soin la
-                # fausse) mais bien plus juste que la vie de base figée.
-                mm = self.card_meta.get(me_leader) if me_leader else None
-                my_life = (payload.get("me") or {}).get("life")
-                my_lost = (max(0, mm.life - my_life)
-                           if (mm and mm.life is not None and my_life is not None) else 0)
-                derived = max(0, self.state._life_to_hand - my_lost)
-                damage = max(damage, derived)
+            damage = (opp_lives_lost if side_key == "opp"
+                      else self.state.leader_damage(leader))
             life = meta.life - damage
             payload[side_key]["life"] = life if life >= 0 else None
 
@@ -1178,16 +1180,18 @@ class LiveEngine:
         _apply_life("me", me_leader)
 
         # Compte de main adverse en live : Player.log n'a pas de snapshot "Hand:" adverse.
-        # Net RZ1 (draws/plays/counters) + correction des life→main (chaque dégât sur le leader
-        # adverse = 1 life card passée en main, non émise dans le flux RZ1). Approximatif (≈) :
-        # quelques effets rares (bounce, pioche d'effet non standard) peuvent induire ±1-2.
+        # Net RZ1 (draws/plays/counters) + correction des life→main via opp_lives_lost.
+        # BUG CORRIGÉ (constaté en partie réelle) : l'ancienne correction utilisait
+        # leader_damage ("hit for", TOUJOURS 0 en live) -> main sous-comptée du nombre de
+        # vies prises -> pire cas de counter sous-estimé -> « Lethal GARANTI » non fiable.
+        # Approximatif (≈) : quelques effets rares peuvent encore induire ±1-2.
         # Garde-fou : résultat négatif -> None (on ne devine pas).
         opp_p = payload.get("opp")
         if (opp_p is not None and opp_p.get("hand_count_approx")
                 and opp_leader is not None):
             net = self.state.opp.hand_count_rz1 if self.state.opp else None
             if net is not None:
-                corrected = net + self.state.leader_damage(opp_leader)
+                corrected = net + opp_lives_lost
                 opp_p["hand_count"] = corrected if corrected >= 0 else None
                 if opp_p["hand_count"] is None:
                     opp_p["hand_count_approx"] = False

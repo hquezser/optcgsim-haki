@@ -155,7 +155,7 @@ export default function OverlayPage() {
 
         {data && hasLethal && (
           <div className={CARD}>
-            <LethalPanel lethal={data.lethal} compact />
+            <LethalPanel lethal={data.lethal} compact oppLeader={data.opp?.leader} />
           </div>
         )}
 
