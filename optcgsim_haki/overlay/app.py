@@ -17,7 +17,8 @@ from . import geometry
 def run_overlay(db_path: str = "optcg.db", port: int = 8765, owner: str = "OPTCGSim",
                 opacity: float = 1.0, autostart_server: bool = True,
                 reveal_all: bool = False, advanced: bool = False,
-                zone: str | None = None, hud_debug: bool = False) -> int:
+                zone: str | None = None, zone2: str | None = None,
+                hud_debug: bool = False) -> int:
     if sys.platform != "darwin":
         print("L'overlay n'est pour l'instant disponible que sur macOS.")
         return 2
@@ -50,6 +51,8 @@ def run_overlay(db_path: str = "optcg.db", port: int = 8765, owner: str = "OPTCG
     params = []
     if zone:
         params.append("zone=" + zone)
+    if zone2:
+        params.append("zone2=" + zone2)
     if hud_debug:
         params.append("debug=1")
     qs = ("?" + "&".join(params)) if params else ""

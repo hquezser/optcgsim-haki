@@ -85,7 +85,7 @@ def cmd_overlay(args) -> int:
     return run_overlay(db_path=args.db, port=args.port, owner=args.owner,
                        opacity=args.opacity, autostart_server=not args.no_server,
                        reveal_all=args.reveal_all, advanced=args.advanced,
-                       zone=args.zone, hud_debug=args.hud_debug)
+                       zone=args.zone, zone2=args.zone2, hud_debug=args.hud_debug)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -123,7 +123,9 @@ def build_parser() -> argparse.ArgumentParser:
     po.add_argument("--reveal-all", action="store_true",
                     help="⚠️ révèle l'info cachée de l'adversaire (triche en partie classée)")
     po.add_argument("--zone", default=None, metavar="x:6,y:30,w:20,h:50",
-                    help="zone du HUD en %% de la fenêtre du jeu (défaut : bande du chat)")
+                    help="zone A du HUD (état) en %% de la fenêtre du jeu (défaut : bande du chat)")
+    po.add_argument("--zone2", default=None, metavar="x:71,y:39,w:27,h:30",
+                    help="zone B du HUD (analyse lethal) en %% (défaut : à droite du board)")
     po.add_argument("--hud-debug", action="store_true",
                     help="dessine le contour de la zone du HUD (pour la caler)")
     po.set_defaults(func=cmd_overlay)

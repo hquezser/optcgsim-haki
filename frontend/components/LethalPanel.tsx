@@ -128,19 +128,12 @@ export function LethalPanel({
             reason={lethal.me_lethal_reason}
             isLethal={lethal.me_can_lethal}
             side="me"
+            maxSteps={3}
           />
         )}
-        {lethal.opp_can_lethal && lethal.opp_attack_plan && lethal.opp_attack_plan.length > 0 && (
-          <AttackPlanView
-            plan={lethal.opp_attack_plan}
-            donAvailable={lethal.opp_don_available}
-            donNeeded={lethal.opp_don_needed}
-            lethalProb={null}
-            reason={lethal.opp_lethal_reason}
-            isLethal={lethal.opp_can_lethal}
-            side="opp"
-          />
-        )}
+        {/* Plan ADVERSE détaillé : volontairement absent du compact (non actionnable — le
+            danger est porté par la bannière et le besoin de counter du panneau défense).
+            Détail complet disponible sur le dashboard (mode long). */}
       </section>
     );
   }
@@ -226,6 +219,7 @@ function AttackPlanView({
   reason,
   isLethal,
   side,
+  maxSteps,
 }: {
   plan: AttackPlanStep[];
   donAvailable: number;
@@ -234,7 +228,11 @@ function AttackPlanView({
   reason: string | null;
   isLethal: boolean;
   side: "me" | "opp";
+  /** Overlay compact : nombre max d'étapes affichées (le reste est résumé « +N »). */
+  maxSteps?: number;
 }) {
+  const shown = maxSteps != null ? plan.slice(0, maxSteps) : plan;
+  const hidden = plan.length - shown.length;
   const isMe = side === "me";
   const title = isMe ? "🎯 Plan d'attaque optimal" : "☠️ Plan d'attaque adverse estimé";
   const titleCls = isMe ? "text-green-400" : "text-red-400";
@@ -283,7 +281,7 @@ function AttackPlanView({
 
       {/* Étapes du plan */}
       <div className="space-y-0.5">
-        {plan.map((step, i) => {
+        {shown.map((step, i) => {
           const roleLabel = step.role === "coup_de_grace"
             ? "coup de grâce"
             : step.role === "blocker"
@@ -309,6 +307,9 @@ function AttackPlanView({
             </div>
           );
         })}
+        {hidden > 0 && (
+          <div className="text-[10px] text-slate-500">+{hidden} autres attaques (même cible)</div>
+        )}
       </div>
 
       {/* Raison si non lethal */}

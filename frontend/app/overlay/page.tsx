@@ -20,9 +20,13 @@ const CARD =
  *  `/overlay?zone=x:6,y:30,w:20,h:50` ; `?debug=1` dessine le contour pour caler. */
 type Zone = { x: number; y: number; w: number; h: number };
 const DEFAULT_ZONE: Zone = { x: 6, y: 30, w: 20, h: 50 };
+// Zone B (droite du board, sous les boutons du sim, au-dessus de « End Turn ») : l'ANALYSE
+// du tour (lethal + plans). Séparée de la colonne d'état pour ne plus déborder — demande
+// utilisateur après partie réelle. Réglable via ?zone2=… / --zone2.
+const DEFAULT_ZONE2: Zone = { x: 71, y: 39, w: 27, h: 30 };
 
-function parseZone(s: string | null): Zone {
-  const z = { ...DEFAULT_ZONE };
+function parseZone(s: string | null, base: Zone = DEFAULT_ZONE): Zone {
+  const z = { ...base };
   for (const part of (s ?? "").split(",")) {
     const [k, v] = part.split(":");
     const n = parseFloat(v);
@@ -63,12 +67,14 @@ function StatusLine({ data }: { data: LiveState }) {
 export default function OverlayPage() {
   const [data, setData] = useState<LiveState | null>(null);
   const [zone, setZone] = useState<Zone>(DEFAULT_ZONE);
+  const [zone2, setZone2] = useState<Zone>(DEFAULT_ZONE2);
   const [debug, setDebug] = useState(false);
 
   // Config par querystring (window.location : la page est 100 % client, export statique).
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
     setZone(parseZone(qs.get("zone")));
+    setZone2(parseZone(qs.get("zone2"), DEFAULT_ZONE2));
     setDebug(qs.get("debug") === "1");
   }, []);
 
@@ -102,18 +108,20 @@ export default function OverlayPage() {
   const hasMenaces = !!data?.next_plays?.length;
   const hasDrawOdds = !!data?.draw_odds;
 
+  const zoneStyle = (z: Zone) => ({
+    left: `${z.x}%`,
+    top: `${z.y}%`,
+    width: `${z.w}%`,
+    // En debug on matérialise toute la zone, sinon on laisse le contenu dicter (borné).
+    height: debug ? `${z.h}%` : undefined,
+    maxHeight: `${z.h}%`,
+  });
+  const zoneCls = `fixed pointer-events-none ${debug ? "outline-dashed outline-1 outline-amber-400" : ""}`;
+
   return (
-    <div
-      className={`fixed pointer-events-none ${debug ? "outline-dashed outline-1 outline-amber-400" : ""}`}
-      style={{
-        left: `${zone.x}%`,
-        top: `${zone.y}%`,
-        width: `${zone.w}%`,
-        // En debug on matérialise toute la zone, sinon on laisse le contenu dicter (borné).
-        height: debug ? `${zone.h}%` : undefined,
-        maxHeight: `${zone.h}%`,
-      }}
-    >
+    <>
+    {/* Zone A (bande du chat) : l'ÉTAT — statut, mulligan, défense, vu/connu, menaces, pioche. */}
+    <div className={zoneCls} style={zoneStyle(zone)}>
       <div className="flex max-h-full flex-col gap-1.5 overflow-hidden text-[11px]">
         {debug && (
           <div className="pointer-events-auto self-start rounded bg-amber-400 px-1 text-[10px] font-semibold text-slate-950">
@@ -153,12 +161,6 @@ export default function OverlayPage() {
           </div>
         )}
 
-        {data && hasLethal && (
-          <div className={CARD}>
-            <LethalPanel lethal={data.lethal} compact oppLeader={data.opp?.leader} />
-          </div>
-        )}
-
         {data && hasMenaces && (
           <div className={CARD}>
             <MenacesPanel
@@ -178,5 +180,23 @@ export default function OverlayPage() {
         )}
       </div>
     </div>
+
+    {/* Zone B (droite du board) : l'ANALYSE du tour — lethal + plans, plafonnés à 3 étapes.
+        Séparée pour ne plus faire déborder la colonne d'état (retour de partie réelle). */}
+    {data && hasLethal && (
+      <div className={zoneCls} style={zoneStyle(zone2)}>
+        <div className="flex max-h-full flex-col gap-1.5 overflow-hidden text-[11px]">
+          {debug && (
+            <div className="pointer-events-auto self-start rounded bg-amber-400 px-1 text-[10px] font-semibold text-slate-950">
+              zone2 x:{zone2.x} y:{zone2.y} w:{zone2.w} h:{zone2.h}
+            </div>
+          )}
+          <div className={CARD}>
+            <LethalPanel lethal={data.lethal} compact oppLeader={data.opp?.leader} />
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
