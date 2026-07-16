@@ -136,6 +136,11 @@ RE_DECK_FILLED = re.compile(r"^deck filled, do shuffle")
 # MON deck, loggé en clair à la sélection (avant les shuffles) : identité EXACTE de ma
 # decklist (fichier <app_support>/<name>.txt) et donc de mon leader.
 RE_PLAYING_DECK = re.compile(r"^Playing with deck:\s*(?P<name>.+?)\s*$")
+# Variante émise au DÉMARRAGE de l'app (session restaurée, pas de sélection) : "Load LUD <name>"
+# (Last Used Deck). Sans elle, une session restaurée n'a AUCUNE ligne d'identité de deck —
+# constaté sur un vrai log online : me_leader restait inconnu et _observed_opp_leader
+# attribuait MON leader (vu dans mes actions V3) à l'adversaire.
+RE_LOAD_LUD = re.compile(r"^Load LUD\s+(?P<name>.+?)\s*$")
 # Activation d'une action V3 (attaque/effet). Les LEADERS y apparaissent quand ils agissent :
 # c'est la seule ligne du Player.log live qui révèle l'identité du leader ADVERSE (exacte,
 # publique). Le suffixe <N> n'est PAS un index de joueur fiable (mes events counter aussi en

@@ -848,7 +848,13 @@ class LiveEngine:
     def _observed_opp_leader(self, me_leader: str | None) -> str | None:
         """Leader adverse OBSERVÉ : id de type leader (CardMeta.life non nul) vu dans les
         actions V3 ('Start Using V3 Action'), différent du mien. Exact et public. None si
-        aucun ou ambigu (>1 candidat — ne devrait pas arriver dans une partie)."""
+        aucun ou ambigu (>1 candidat — ne devrait pas arriver dans une partie).
+
+        GARDE : exige que MON leader soit connu. Sinon impossible d'exclure le mien — bug
+        constaté sur un vrai log online (session restaurée sans ligne de deck) : MON leader,
+        seul id de type leader dans mes actions V3, était attribué à l'ADVERSAIRE."""
+        if not me_leader:
+            return None
         cands = set()
         for cid in self.state.v3_action_ids:
             if cid == me_leader:
@@ -1081,6 +1087,15 @@ class LiveEngine:
         me_inferred = False
         if not me_leader:
             me_leader = self._my_deck_leader()
+        # Secours EXACT (pas de ligne de deck, ex. vieux log sans "Load LUD") : identification
+        # stricte sans leader connu — si toutes mes cartes vues (≥5, même seuil que
+        # match_deck_strict) n'existent que dans UN deck sauvegardé, son leader est le mien.
+        if not me_leader and len({c for c in me_cards if c}) >= 5:
+            seen = {c for c in me_cards if c}
+            hits = [dk for dk in self._named_decks()
+                    if dk.cards and (seen - {dk.leader}) <= dk.cards]
+            if len(hits) == 1:
+                me_leader = hits[0].leader
         # Leader ADVERSE : il apparaît dans "Start Using V3 Action [...]" quand il attaque ou
         # active son effet. Un id de type leader (CardMeta.life non nul) ≠ le mien = observé
         # exactement — prime sur l'inférence d'archétype (qui peut se tromper, cf. Luffy vs Ace).

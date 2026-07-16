@@ -615,7 +615,7 @@ class LiveState:
             return
 
         # MON deck sélectionné : identité exacte de ma decklist (et donc de mon leader).
-        mpd = L.RE_PLAYING_DECK.match(raw)
+        mpd = L.RE_PLAYING_DECK.match(raw) or L.RE_LOAD_LUD.match(raw)
         if mpd:
             self.my_deck_name = mpd.group("name")
             return

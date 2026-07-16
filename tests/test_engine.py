@@ -1527,3 +1527,53 @@ def test_lethal_worst_case_none_when_hand_unknown(tmp_path):
     l = srv._state_payload()["lethal"]
     assert l["opp_counter_worst"] is None
     assert l["me_lethal_guaranteed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Régressions du log online réel (2026-07-14) : Load LUD + pollution du leader ADV.
+# ---------------------------------------------------------------------------
+
+def test_load_lud_feeds_my_deck_name():
+    """Session restaurée : "Load LUD <name>" (émis à l'app-start) vaut sélection de deck."""
+    from optcgsim_haki.live import LiveState
+    s = LiveState()
+    s.feed_line("Load LUD 0Sanji 8k OP16")
+    assert s.my_deck_name == "0Sanji 8k OP16"
+
+
+def test_observed_opp_leader_requires_my_leader_known(tmp_path):
+    """RÉGRESSION (log online réel) : MON leader activait son action V3 et, faute de
+    me_leader résolu, était attribué à l'ADVERSAIRE (affiché « observé »). La garde exige
+    désormais me_leader connu avant toute attribution."""
+    class _Meta:
+        def __init__(self, life): self.life = life
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    srv.card_meta = {"PRB01-001": _Meta(5)}
+    st = _live_match(srv, me_leader=None, opp_leader=None)
+    # MON leader (type leader) active son action -> id dans v3_action_ids.
+    st.feed_line('Start Using V3 Action [Sanji [<mark><link="PRB01-001">PRB01-001</link></mark>]]<0>')
+    assert srv._observed_opp_leader(None) is None          # garde : me inconnu -> rien
+    assert srv._observed_opp_leader("PRB01-001") is None   # exclu : c'est le mien
+    payload = srv._state_payload()
+    opp = payload.get("opp") or {}
+    assert opp.get("leader") != "PRB01-001"                # plus jamais mon leader chez l'ADV
+
+
+def test_me_leader_from_strict_deck_match_without_logged_deck(tmp_path, monkeypatch):
+    """Sans AUCUNE ligne de deck : si mes ≥5 cartes vues n'existent que dans UN deck
+    sauvegardé, son leader est le mien (secours exact)."""
+    monkeypatch.setenv("OPTCG_APP_SUPPORT", str(tmp_path))
+    (tmp_path / "MonDeck.txt").write_text(
+        "1xPRB01-001\n4xEB04-007\n4xOP09-009\n4xOP09-020\n4xEB04-004\n4xOP09-014\n")
+    db = tmp_path / "t.db"
+    _seed_db(db)
+    srv = LiveEngine(str(db), reveal_all=False)
+    st = srv.state
+    st.feed_line("shuffle deck for Foe#2222")
+    st.feed_line("shuffle deck for Me#0000")
+    st.feed_line("[ReplaySync] RZ1|1|1|EB04-007|0|49|1|0|1|1|0|0|0")
+    st.feed_line("Hand before Mulligan: [EB04-007,OP09-009,OP09-020,EB04-004,OP09-014]")
+    payload = srv._state_payload()
+    assert payload["me"]["leader"] == "PRB01-001"
